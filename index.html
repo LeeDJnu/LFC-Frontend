@@ -1,0 +1,1754 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Parking Platform</title>
+
+  <link rel="stylesheet" href="css/styles.css">
+
+
+  <script src="config.js"></script>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="header-brand">
+        <h1>LFCSP Parking Platform</h1>
+        <p id="headerSubtitle">Smart Parking Service</p>
+      </div>
+
+      <div id="headerUser" class="header-user" hidden>
+        <button onclick="logout()">로그아웃</button>
+      </div>
+    </div>
+
+    <img
+      class="header-logo"
+      src="image/images.png"
+      alt="Parking Platform 로고"
+    >
+  </div>
+</header>
+
+<main>
+  <div id="loginScreen" class="login-wrap">
+    <div class="login-card">
+      <span class="login-kicker">LFCSP</span>
+      <h2 class="login-title">더 빠른 주차, 더 선명한 경험</h2>
+      <p class="login-copy">계정 유형에 따라 맞춤형 관리 화면으로 이동합니다.</p>
+      <div class="account-guide">
+        관리자: <code>admin@example.com / password123</code><br>
+        사용자: <code>C1@example.com</code>, <code>C2@example.com</code>, <code>C3@example.com</code>, <code>C4@example.com</code><br>
+        오너: <code>H1@example.com</code>, <code>H2@example.com</code>, <code>H3@example.com</code>, <code>H4@example.com</code>, <code>H5@example.com</code><br>
+        공통 비밀번호: <code>password123</code>
+      </div>
+      <label>이메일</label>
+      <input id="email" value="C1@example.com">
+      <label>비밀번호</label>
+      <input id="password" type="password" value="password123" onkeydown="if(event.key==='Enter')login()">
+      <button id="loginButton" onclick="login()">로그인</button>
+      <p id="loginStatus" class="status muted"></p>
+    </div>
+  </div>
+
+  <!-- 관리자에게는 이 화면만 표시 -->
+  <div id="adminScreen" hidden>
+
+    <div class="role-hero admin">
+      <div class="role-hero-content">
+        <span class="role-kicker">ADMIN OPERATIONS</span>
+        <h2>예약 운영을 한눈에 관리하세요</h2>
+        <p>
+          전체 주차장의 예약, 입차, 출차, 결제 상태를 실시간으로 확인하고
+          필요한 항목을 빠르게 검색할 수 있습니다.
+        </p>
+      </div>
+    </div>
+    <section>
+      <h2>1. 주차장 잔여 현황</h2>
+      <p class="muted">
+        관리자는 전체 주차장의 총 주차면과 현재 잔여 주차면을 확인할 수 있습니다.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>주차장</th>
+              <th>운영자</th>
+              <th>주소</th>
+              <th>전체</th>
+              <th>잔여</th>
+              <th>상태</th>
+            </tr>
+          </thead>
+          <tbody id="adminLotRows"></tbody>
+        </table>
+      </div>
+      <p id="adminLotEmpty" class="empty" hidden>등록된 주차장이 없습니다.</p>
+    </section>
+
+    <section>
+      <h2>2. 회원 계정 현황</h2>
+      <p class="muted">
+        계정 정보가 MySQL DB의 <code>users</code> 테이블에 저장됩니다.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>이름</th>
+              <th>이메일</th>
+              <th>역할</th>
+              <th>전화번호</th>
+              <th>가입일</th>
+            </tr>
+          </thead>
+          <tbody id="adminUserRows"></tbody>
+        </table>
+      </div>
+      <p id="adminUserEmpty" class="empty" hidden>등록된 회원이 없습니다.</p>
+    </section>
+
+    <section>
+      <h2>3. 예약 현황</h2>
+      <p class="muted">
+        전체 사용자의 예약 차량, 입차 대기, 주차 중, 출차 완료,
+        결제 완료·미결제 상태를 확인합니다.
+      </p>
+
+      <div class="summary-grid">
+        <div class="summary-card"><span>전체 예약</span><strong id="adminTotal">0</strong></div>
+        <div class="summary-card"><span>예약 중</span><strong id="adminReserved">0</strong></div>
+        <div class="summary-card"><span>주차 중</span><strong id="adminParking">0</strong></div>
+        <div class="summary-card"><span>출차 완료</span><strong id="adminCompleted">0</strong></div>
+        <div class="summary-card"><span>미결제</span><strong id="adminUnpaid">0</strong></div>
+      </div>
+
+      <div class="admin-toolbar">
+        <input id="adminKeyword" placeholder="차량번호, 사용자, 주차장 검색" oninput="renderAdminReservations()">
+        <select id="adminStatusFilter" onchange="renderAdminReservations()">
+          <option value="">모든 이용 상태</option>
+          <option value="reserved">예약 중</option>
+          <option value="parking">주차 중</option>
+          <option value="completed">출차 완료</option>
+          <option value="cancelled">취소</option>
+        </select>
+        <select id="adminPaymentFilter" onchange="renderAdminReservations()">
+          <option value="">모든 결제 상태</option>
+          <option value="requested">미결제</option>
+          <option value="paid">결제 완료</option>
+          <option value="refunded">환불</option>
+          <option value="failed">결제 실패</option>
+        </select>
+        <button onclick="loadAdminDashboard()">새로고침</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>예약</th>
+              <th>사용자</th>
+              <th>차량</th>
+              <th>주차장</th>
+              <th>예약 입차 시간</th>
+              <th>이용 상태</th>
+              <th>입·출차 기록</th>
+              <th>결제 상태</th>
+              <th>결제 금액</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="adminReservationRows"></tbody>
+        </table>
+      </div>
+      <p id="adminEmpty" class="empty" hidden>조건에 맞는 예약이 없습니다.</p>
+      <p class="admin-note">관리자 화면은 10초마다 자동 새로고침됩니다.</p>
+    </section>
+  </div>
+
+
+  <!-- 주차장 운영자에게 표시 -->
+  <div id="ownerScreen" hidden>
+
+    <div class="role-hero owner">
+      <div class="role-hero-content">
+        <span class="role-kicker">PARKING OWNER</span>
+        <h2>내 주차장 운영 현황을 확인하세요</h2>
+        <p>
+          배정된 주차장의 예약 차량, 현재 주차 중인 차량,
+          출차와 결제 상태를 한 화면에서 확인할 수 있습니다.
+        </p>
+      </div>
+    </div>
+    <section>
+      <h2>1. 내 주차장</h2>
+      <p class="muted">
+        주차장의 예약·입출차·결제 상태를 가명 기준으로 확인할 수 있습니다.
+      </p>
+      <div id="ownerLotGrid" class="owner-lot-grid"></div>
+      <p id="ownerNoLots" class="empty" hidden>등록된 소유 주차장이 없습니다.</p>
+    </section>
+
+    <section>
+      <h2>2. 주차장 예약·차량 현황</h2>
+      <p id="ownerSelectedLot" class="muted">주차장을 선택하세요.</p>
+
+      <div class="summary-grid">
+        <div class="summary-card"><span>전체 예약</span><strong id="ownerTotal">0</strong></div>
+        <div class="summary-card"><span>예약 중</span><strong id="ownerReserved">0</strong></div>
+        <div class="summary-card"><span>주차 중</span><strong id="ownerParking">0</strong></div>
+        <div class="summary-card"><span>출차 완료</span><strong id="ownerCompleted">0</strong></div>
+        <div class="summary-card"><span>미결제</span><strong id="ownerUnpaid">0</strong></div>
+      </div>
+
+      <div class="owner-toolbar">
+        <input id="ownerKeyword" placeholder="예약 가명 검색" oninput="renderOwnerReservations()">
+        <select id="ownerStatusFilter" onchange="renderOwnerReservations()">
+          <option value="">모든 이용 상태</option>
+          <option value="reserved">예약 중</option>
+          <option value="parking">주차 중</option>
+          <option value="completed">출차 완료</option>
+          <option value="cancelled">취소</option>
+        </select>
+        <select id="ownerPaymentFilter" onchange="renderOwnerReservations()">
+          <option value="">모든 결제 상태</option>
+          <option value="requested">미결제</option>
+          <option value="paid">결제 완료</option>
+          <option value="refunded">환불</option>
+          <option value="failed">결제 실패</option>
+        </select>
+        <button onclick="refreshOwnerDashboard()">새로고침</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>예약</th>
+              <th>예약 가명</th>
+              <th>예약 입차 시간</th>
+              <th>이용 상태</th>
+              <th>입·출차 기록</th>
+              <th>결제 상태</th>
+              <th>결제 금액</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="ownerReservationRows"></tbody>
+        </table>
+      </div>
+      <p id="ownerEmpty" class="empty" hidden>해당 주차장에 예약 내역이 없습니다.</p>
+      <p class="admin-note">운영자 화면은 10초마다 자동 새로고침됩니다.</p>
+    </section>
+  </div>
+
+  <!-- 일반 사용자에게만 표시 -->
+  <div id="userScreen" hidden>
+
+    <div class="role-hero user">
+      <div class="role-hero-content">
+        <span class="role-kicker">SMART PARKING</span>
+        <h2>도시의 주차를 더 빠르고 강렬하게</h2>
+        <p style="color: #1b1b1d;">
+          장소를 검색하고 목적지와 가까운 주차장을 선택한 뒤
+          등록한 차량으로 바로 예약할 수 있습니다.
+        </p>
+      </div>
+    </div>
+    <section>
+      <h2>1. 지도 검색</h2>
+      <p class="muted">장소를 검색하면 해당 위치 기준으로 주변 주차장이 표시됩니다.</p>
+      <div class="search-row">
+        <div>
+          <label>목적지</label>
+          <input id="locationQuery" value="강남역" onkeydown="if(event.key==='Enter')searchDestination()">
+        </div>
+        <button id="searchButton" onclick="searchDestination()">검색</button>
+      </div>
+      <div class="three">
+        <div><label>예약 입차 시간</label><input id="start" type="datetime-local"></div>
+        <div>
+          <label>검색 반경</label>
+          <select id="radius">
+            <option value="1">1km</option>
+            <option value="3" selected>3km</option>
+            <option value="5">5km</option>
+            <option value="10">10km</option>
+          </select>
+        </div>
+      </div>
+      <p id="searchStatus" class="status muted">목적지를 입력한 뒤 검색하세요.</p>
+      <div id="mapArea" hidden>
+        <div id="selectedPlace" class="selected-place"></div>
+        <div id="map"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. 검색 결과</h2>
+      <div id="parkingResults" class="empty">아직 검색하지 않았습니다.</div>
+    </section>
+
+    <section>
+      <h2>3. 차량 · 예약</h2>
+      <div class="vr-grid">
+        <div class="subpanel">
+          <div class="subhead">
+            <h3>내 차량</h3>
+            <button class="secondary" onclick="openVehicleManager()">차량 불러오기 / 등록</button>
+          </div>
+          <div id="vehicleForm" class="vehicle-form" hidden>
+            <label>차량번호</label>
+            <input id="vehiclePlate" placeholder="예: 12가3456">
+            <div class="form-actions">
+              <button onclick="registerVehicle()">차량 등록</button>
+              <button class="light" onclick="$('vehicleForm').hidden=true">닫기</button>
+            </div>
+            <p id="vehicleStatus" class="status muted"></p>
+          </div>
+          <div class="vehicle-select">
+            <label>예약에 사용할 차량</label>
+            <select id="reservationVehicle"></select>
+          </div>
+          <div id="vehicleResults"></div>
+        </div>
+
+        <div class="subpanel">
+          <div class="subhead">
+            <h3>내 예약</h3>
+            <button class="secondary" onclick="loadReservations()">예약 새로고침</button>
+          </div>
+          <div id="reservationResults"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+let token=sessionStorage.getItem("parkingToken")||"";
+let temporaryKeyId=sessionStorage.getItem("temporaryKeyId")||"";
+let temporaryPrivateKey=sessionStorage.getItem("temporaryPrivateKey")||"";
+let currentUser=null;
+let kakaoKey="";
+let kakaoPromise=null;
+let map=null;
+let selectedPlace=null;
+let destinationMarker=null;
+let parkingMarkers=[];
+let vehicles=[];
+let reservations=[];
+let adminUsers=[];
+let adminParkingLots=[];
+let adminReservations=[];
+let adminRefreshTimer=null;
+let ownerLots=[];
+let ownerReservations=[];
+let selectedOwnerLotId=null;
+let ownerRefreshTimer=null;
+
+function browserConfiguredKakaoKey(){
+  return window.PARKING_CONFIG?.KAKAO_JAVASCRIPT_KEY || "";
+}
+
+const $=id=>document.getElementById(id);
+const esc=value=>String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+const pad=n=>String(n).padStart(2,"0");
+const localDate=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+function formatDate(value){
+  if(!value)return "-";
+  return new Intl.DateTimeFormat("ko-KR",{
+    month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"
+  }).format(new Date(value));
+}
+
+function formatFullDate(value){
+  if(!value)return "-";
+  return new Intl.DateTimeFormat("ko-KR",{
+    year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit"
+  }).format(new Date(value));
+}
+
+function setDefaultTimes(){
+  const now=new Date();
+  const start=new Date(Math.ceil(now.getTime()/600000)*600000);
+  $("start").value=localDate(start);
+}
+
+
+function phpApiUrl(path){
+  const methodPath=String(path);
+  const [base,query=""] = methodPath.split("?");
+
+  const directMap={
+    "/api/auth/login":"api/login.php",
+    "/api/auth/me":"api/me.php",
+    "/api/auth/logout":"api/logout.php",
+    "/api/config":"api/config.php",
+    "/api/admin/users":"api/admin_users.php",
+    "/api/admin/parking-lots":"api/admin_parking_lots.php",
+    "/api/admin/reservations":"api/admin_reservations.php",
+    "/api/owner/parking-lots":"api/owner_parking_lots.php",
+    "/api/owner/reservations":"api/owner_reservations.php",
+    "/api/parking-lots/search":"api/parking_lots_search.php",
+    "/api/vehicles":"api/vehicles.php",
+    "/api/reservations":"api/reservations.php"
+  };
+
+  let target=directMap[base];
+
+  let match=base.match(/^\/api\/vehicles\/(\d+)$/);
+  if(match)target=`api/delete_vehicle.php?id=${match[1]}`;
+
+  match=base.match(/^\/api\/reservations\/(\d+)$/);
+  if(match)target=`api/delete_reservation.php?id=${match[1]}`;
+
+  match=base.match(/^\/api\/reservations\/(\d+)\/([^/]+)$/);
+  if(match)target=`api/reservation_action.php?id=${match[1]}&action=${encodeURIComponent(match[2])}`;
+
+
+  match=base.match(/^\/api\/reservations\/(\d+)\/driver-key$/);
+  if(match)target=`api/driver_public_key.php?id=${match[1]}`;
+
+  match=base.match(/^\/api\/owner\/reservations\/(\d+)\/([^/]+)\/sign$/);
+  if(match)target=`api/owner_signature_action.php?id=${match[1]}&action=${encodeURIComponent(match[2])}`;
+
+  match=base.match(/^\/api\/admin\/reservations\/(\d+)$/);
+  if(match)target=`api/admin_delete_reservation.php?id=${match[1]}`;
+
+  match=base.match(/^\/api\/owner\/reservations\/(\d+)$/);
+  if(match)target=`api/owner_delete_reservation.php?id=${match[1]}`;
+
+  if(!target)target=base.replace(/^\/+/,"");
+
+  if(query){
+    target += target.includes("?") ? `&${query}` : `?${query}`;
+  }
+
+  return target;
+}
+
+async function api(path,options={}){
+  const response=await fetch(phpApiUrl(path),{
+    ...options,
+    credentials:"include",
+    headers:{
+      "Content-Type":"application/json",
+      ...(token?{Authorization:`Bearer ${token}`}:{})
+    }
+  });
+
+  const raw=await response.text();
+  let data=null;
+  if(raw){
+    try{data=JSON.parse(raw)}catch{data={detail:raw}}
+  }
+
+  if(!response.ok){
+    throw new Error(data?.detail||`HTTP ${response.status}`);
+  }
+  return data;
+}
+
+async function login(){
+  $("loginButton").disabled=true;
+  $("loginStatus").textContent="로그인 중...";
+  try{
+    const result=await api("/api/auth/login",{
+      method:"POST",
+      body:JSON.stringify({
+        email:$("email").value.trim(),
+        password:$("password").value
+      })
+    });
+    token=result.access_token;
+    temporaryKeyId=result.temporary_key_id||"";
+    temporaryPrivateKey=result.temporary_private_key||"";
+        sessionStorage.setItem("parkingToken",token);
+    sessionStorage.setItem("temporaryKeyId",temporaryKeyId);
+    sessionStorage.setItem("temporaryPrivateKey",temporaryPrivateKey);
+        await enterRoleScreen();
+  }catch(error){
+    $("loginStatus").innerHTML=`<span class="error">${esc(error.message)}</span>`;
+  }finally{
+    $("loginButton").disabled=false;
+  }
+}
+
+async function enterRoleScreen(){
+  currentUser=await api("/api/auth/me");
+  $("loginScreen").hidden=true;
+  $("headerUser").hidden=false;
+
+  $("adminScreen").hidden=true;
+  $("ownerScreen").hidden=true;
+  $("userScreen").hidden=true;
+
+  $("headerSubtitle").textContent =
+    `${currentUser.name} · ${currentUser.role.toUpperCase()}`;
+
+  if(currentUser.role==="admin"){
+    $("adminScreen").hidden=false;
+    await loadAdminDashboard();
+    startAdminAutoRefresh();
+  }else if(currentUser.role==="owner"){
+    $("ownerScreen").hidden=false;
+    await loadOwnerParkingLots();
+    startOwnerAutoRefresh();
+  }else{
+    $("userScreen").hidden=false;
+    await Promise.all([loadVehicles(),loadReservations()]);
+  }
+}
+
+async function logout(){
+  try{ await api("/api/auth/logout",{method:"POST"}); }catch{}
+  stopAdminAutoRefresh();
+  stopOwnerAutoRefresh();
+  token="";
+  currentUser=null;
+  temporaryKeyId="";
+  temporaryPrivateKey="";
+  temporaryKeyFingerprint="";
+  sessionStorage.removeItem("parkingToken");
+  sessionStorage.removeItem("temporaryKeyId");
+  sessionStorage.removeItem("temporaryPrivateKey");
+    $("adminScreen").hidden=true;
+  $("ownerScreen").hidden=true;
+  $("userScreen").hidden=true;
+  $("loginScreen").hidden=false;
+  $("headerUser").hidden=true;
+  $("headerSubtitle").textContent="Smart Parking Service";
+}
+
+function operationalStatus(value){
+  if(value==="pending"||value==="paid")return "reserved";
+  if(value==="checked_in")return "parking";
+  if(value==="completed")return "completed";
+  return value;
+}
+
+function operationalLabel(value){
+  return {
+    reserved:"예약 중",
+    parking:"주차 중",
+    completed:"출차 완료",
+    cancelled:"취소"
+  }[operationalStatus(value)]||value;
+}
+
+function paymentLabel(value){
+  return {
+    requested:"미결제",
+    paid:"결제 완료",
+    refunded:"환불",
+    failed:"결제 없음"
+  }[value]||value;
+}
+
+function statusBadge(value){
+  const status=operationalStatus(value);
+  return `<span class="badge ${status}">${operationalLabel(value)}</span>`;
+}
+
+function paymentBadge(value){
+  const css=value==="paid"?"paid":"unpaid";
+  return `<span class="badge ${css}">${paymentLabel(value)}</span>`;
+}
+
+
+async function loadAdminDashboard(){
+  await Promise.all([
+    loadAdminUsers(),
+    loadAdminParkingLots(),
+    loadAdminReservations()
+  ]);
+}
+
+async function loadAdminUsers(){
+  try{
+    adminUsers=await api("/api/admin/users");
+    renderAdminUsers();
+  }catch(error){
+    $("adminUserRows").innerHTML=`<tr><td colspan="6" class="error">${esc(error.message)}</td></tr>`;
+  }
+}
+
+function roleBadge(role){
+  const label={admin:"관리자",user:"사용자",owner:"운영자"}[role]||role;
+  return `<span class="badge">${esc(label)}</span>`;
+}
+
+function renderAdminUsers(){
+  $("adminUserEmpty").hidden=adminUsers.length!==0;
+  $("adminUserRows").innerHTML=adminUsers.map(user=>`
+    <tr>
+      <td><b>#${user.id}</b></td>
+      <td><b>${esc(user.name)}</b></td>
+      <td>${esc(user.email)}</td>
+      <td>${roleBadge(user.role)}</td>
+      <td>${esc(user.phone||"-")}</td>
+      <td class="time-cell">${formatFullDate(user.created_at)}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadAdminParkingLots(){
+  try{
+    adminParkingLots=await api("/api/admin/parking-lots");
+    renderAdminParkingLots();
+  }catch(error){
+    $("adminLotRows").innerHTML=`<tr><td colspan="6" class="error">${esc(error.message)}</td></tr>`;
+  }
+}
+
+function renderAdminParkingLots(){
+  $("adminLotEmpty").hidden=adminParkingLots.length!==0;
+  $("adminLotRows").innerHTML=adminParkingLots.map(lot=>`
+    <tr>
+      <td><b>${esc(lot.name)}</b><br><span class="muted">#${lot.id}</span></td>
+      <td><b>${esc(lot.owner_name||"-")}</b><br><span class="muted">${esc(lot.owner_email||"-")}</span></td>
+      <td>${esc(lot.address)}</td>
+      <td class="amount">${Number(lot.total_spaces).toLocaleString()}면</td>
+      <td class="amount">${Number(lot.available_spaces).toLocaleString()}면</td>
+      <td>${lot.is_active?'<span class="badge paid">운영 중</span>':'<span class="badge completed">비활성</span>'}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadAdminReservations(){
+  try{
+    adminReservations=normalizeAdminReservationSignatures(await api("/api/admin/reservations"));
+    updateAdminSummary();
+    renderAdminReservations();
+  }catch(error){
+    $("adminReservationRows").innerHTML=`<tr><td colspan="10" class="error">${esc(error.message)}</td></tr>`;
+  }
+}
+
+function updateAdminSummary(){
+  $("adminTotal").textContent=adminReservations.length;
+  $("adminReserved").textContent=adminReservations.filter(r=>operationalStatus(r.reservation_status)==="reserved").length;
+  $("adminParking").textContent=adminReservations.filter(r=>operationalStatus(r.reservation_status)==="parking").length;
+  $("adminCompleted").textContent=adminReservations.filter(r=>operationalStatus(r.reservation_status)==="completed").length;
+  $("adminUnpaid").textContent=adminReservations.filter(r=>r.payment_status!=="paid").length;
+}
+
+
+
+function normalizeAdminReservationSignatures(items){
+  return items.map(item=>({
+    ...item,
+    check_in_signed:item.driver_check_in_signed||item.check_in_signed||!!item.check_in_key_id,
+    check_out_signed:item.driver_check_out_signed||item.check_out_signed||!!item.check_out_key_id
+  }));
+}
+
+
+function completedPaidDeleteButton(item,scope){
+  if(item.reservation_status==="completed"&&item.payment_status==="paid"){
+    return `<button class="danger small-action" onclick="deleteCompletedRecord(${item.id},'${scope}')">기록 삭제</button>`;
+  }
+  return '<span class="muted">-</span>';
+}
+
+function ownerManagementButtons(item){
+  const buttons=[];
+  if(item.reservation_status==="completed"&&item.payment_status==="paid"){
+    buttons.push(`<button class="danger small-action" onclick="deleteCompletedRecord(${item.id},'owner')">기록 삭제</button>`);
+  }
+  return buttons.length?`<div class="action-stack">${buttons.join("")}</div>`:'<span class="muted">-</span>';
+}
+
+async function deleteCompletedRecord(id,scope){
+  const label=scope==="admin"?"관리자 권한으로":"오너 권한으로";
+  if(!confirm(`${label} 결제 완료된 이용 기록을 삭제할까요? 삭제 후에는 복구할 수 없습니다.`)){
+    return;
+  }
+
+  const url=scope==="admin"
+    ?`/api/admin/reservations/${id}`
+    :`/api/owner/reservations/${id}`;
+
+  try{
+    await api(url,{method:"DELETE"});
+
+    if(scope==="admin"){
+      await loadAdminDashboard();
+    }else{
+      await loadOwnerParkingLots();
+      await loadOwnerReservations(selectedOwnerLotId);
+    }
+
+    alert("이용 기록이 삭제되었습니다.");
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+
+
+function signatureBadge(label,ok){
+  return ok?`<span class="badge paid">${label} 완료</span>`:`<span class="badge unpaid">${label} 대기</span>`;
+}
+
+function adminSignatureKeyBlock(item,type){
+  const isIn=type==="in";
+  const label=isIn?"입차":"출차";
+  const driverOk=isIn?item.driver_check_in_signed:item.driver_check_out_signed;
+  const ownerOk=isIn?item.owner_check_in_signed:item.owner_check_out_signed;
+  return `
+    <div class="admin-signature-key">
+      ${signatureBadge(`운전자 ${label}`,driverOk)}<br>
+      ${signatureBadge(`오너 ${label}`,ownerOk)}
+    </div>
+  `;
+}
+
+function adminSignaturePairDetail(item,type){
+  const isIn=type==="in";
+  const label=isIn?"입차":"출차";
+  const driverMsg=isIn?item.driver_check_in_message:item.driver_check_out_message;
+  const driverSig=isIn?item.driver_check_in_signature_value:item.driver_check_out_signature_value;
+  const driverAt=isIn?item.driver_check_in_signed_at:item.driver_check_out_signed_at;
+  const driverVerified=isIn?item.driver_check_in_verified_at:item.driver_check_out_verified_at;
+  const ownerMsg=isIn?item.owner_check_in_message:item.owner_check_out_message;
+  const ownerSig=isIn?item.owner_check_in_signature_value:item.owner_check_out_signature_value;
+  const ownerAt=isIn?item.owner_check_in_signed_at:item.owner_check_out_signed_at;
+  const ownerVerified=isIn?item.owner_check_in_verified_at:item.owner_check_out_verified_at;
+  return `
+    <div class="detail-block">
+      <h3>${label} 양측 서명</h3>
+      <dl class="detail-list">
+        <dt>운전자 ${label} 서명</dt>
+        <dd>${signatureBadge("운전자",!!driverSig)}<br><span class="muted">서명시각: ${formatFullDate(driverAt)} / 검증시각: ${formatFullDate(driverVerified)}</span></dd>
+        <dt>운전자 서명 메시지</dt>
+        <dd><code>${esc(driverMsg||"-")}</code></dd>
+        <dt>운전자 서명값</dt>
+        <dd><code>${esc(driverSig?driverSig.slice(0,96)+"...":"-")}</code></dd>
+        <dt>오너 ${label} 서명</dt>
+        <dd>${signatureBadge("오너",!!ownerSig)}<br><span class="muted">서명시각: ${formatFullDate(ownerAt)} / 검증시각: ${formatFullDate(ownerVerified)}</span></dd>
+        <dt>오너 서명 메시지</dt>
+        <dd><code>${esc(ownerMsg||"-")}</code></dd>
+        <dt>오너 서명값</dt>
+        <dd><code>${esc(ownerSig?ownerSig.slice(0,96)+"...":"-")}</code></dd>
+      </dl>
+    </div>
+  `;
+}
+
+function adminManagementButtons(item){
+  const deleteButton=(item.reservation_status==="completed"&&item.payment_status==="paid")
+    ? `<button class="danger small-action" onclick="deleteCompletedRecord(${item.id},'admin')">기록 삭제</button>`
+    : "";
+
+  return `
+    <div class="action-stack">
+      ${deleteButton}
+      <button class="small-action" onclick="openAdminReservationDetail(${item.id})">상세 내역</button>
+    </div>
+  `;
+}
+
+function openAdminReservationDetail(id){
+  const item=adminReservations.find(reservation=>reservation.id===id);
+  if(!item){
+    alert("예약 상세 정보를 찾을 수 없습니다.");
+    return;
+  }
+
+  $("adminDetailContent").innerHTML=`
+    <div class="detail-summary">
+      <h3>예약 #${item.id}</h3>
+      <p class="muted">운전자 서명과 자동 생성된 오너 확인 서명 상세 내역입니다.</p>
+    </div>
+
+    <div class="detail-block">
+      <h3>사용자 신원</h3>
+      <dl class="detail-list">
+        <dt>사용자</dt>
+        <dd>${esc(item.user_name)}</dd>
+
+        <dt>이메일</dt>
+        <dd>${esc(item.user_email)}</dd>
+
+        <dt>차량</dt>
+        <dd>${esc(item.vehicle_plate)}</dd>
+
+        <dt>주차장</dt>
+        <dd>${esc(item.parking_lot_name)}</dd>
+      </dl>
+    </div>
+
+    ${adminSignaturePairDetail(item,"in")}
+    ${adminSignaturePairDetail(item,"out")}
+
+    <p class="muted detail-help">
+      관리자 DB에는 개인키를 저장하지 않고, 운전자·오너 임시 공개키와 서명 메시지·서명값만 저장합니다.
+    </p>
+  `;
+
+  $("adminDetailModal").hidden=false;
+}
+
+function closeAdminReservationDetail(){
+  $("adminDetailModal").hidden=true;
+  $("adminDetailContent").innerHTML="";
+}
+
+function renderAdminReservations(){
+  const keyword=$("adminKeyword").value.trim().toLowerCase();
+  const statusFilter=$("adminStatusFilter").value;
+  const paymentFilter=$("adminPaymentFilter").value;
+
+  const rows=adminReservations.filter(item=>{
+    const haystack=[
+      item.user_name,item.user_email,item.vehicle_plate,
+      item.parking_lot_name
+    ].join(" ").toLowerCase();
+
+    return (!keyword||haystack.includes(keyword))
+      &&(!statusFilter||operationalStatus(item.reservation_status)===statusFilter)
+      &&(!paymentFilter||item.payment_status===paymentFilter);
+  });
+
+  $("adminEmpty").hidden=rows.length!==0;
+  $("adminReservationRows").innerHTML=rows.map(item=>`
+    <tr>
+      <td><b>#${item.id}</b><br><span class="muted">${formatDate(item.created_at)}</span></td>
+      <td><b>${esc(item.user_name)}</b><br><span class="muted">${esc(item.user_email)}</span></td>
+      <td><b>${esc(item.vehicle_plate)}</b></td>
+      <td>${esc(item.parking_lot_name)}</td>
+      <td class="time-cell">${formatFullDate(item.start_time)}</td>
+      <td>${statusBadge(item.reservation_status)}</td>
+      <td class="time-cell">입차: ${formatFullDate(item.check_in_at)}<br>${adminSignatureKeyBlock(item,'in')}<br>출차: ${formatFullDate(item.check_out_at)}<br>${adminSignatureKeyBlock(item,'out')}</td>
+      <td>${paymentBadge(item.payment_status)}${item.check_out_at&&item.payment_status!=="paid"?'<br><span class="error">출차 후 미결제</span>':""}<br><span class="muted">결제: ${formatFullDate(item.paid_at)}</span></td>
+      <td class="amount">${Number(item.payment_amount).toLocaleString()}원</td>
+      <td>${adminManagementButtons(item)}</td>
+    </tr>
+  `).join("");
+}
+
+function startAdminAutoRefresh(){
+  stopAdminAutoRefresh();
+  adminRefreshTimer=setInterval(()=>{
+    if(currentUser?.role==="admin"){
+      loadAdminDashboard();
+    }
+  },10000);
+}
+
+function stopAdminAutoRefresh(){
+  if(adminRefreshTimer){
+    clearInterval(adminRefreshTimer);
+    adminRefreshTimer=null;
+  }
+}
+
+
+async function loadOwnerParkingLots(){
+  try{
+    ownerLots=await api("/api/owner/parking-lots");
+
+    if(!ownerLots.length){
+      selectedOwnerLotId=null;
+      ownerReservations=[];
+      $("ownerNoLots").hidden=false;
+      renderOwnerParkingLots();
+      updateOwnerSummary();
+      renderOwnerReservations();
+      $("ownerSelectedLot").textContent="등록된 소유 주차장이 없습니다.";
+      return;
+    }
+
+    $("ownerNoLots").hidden=true;
+
+    if(!selectedOwnerLotId||!ownerLots.some(lot=>lot.id===selectedOwnerLotId)){
+      selectedOwnerLotId=ownerLots[0].id;
+    }
+
+    renderOwnerParkingLots();
+    await loadOwnerReservations(selectedOwnerLotId);
+  }catch(error){
+    $("ownerLotGrid").innerHTML=`<p class="error">${esc(error.message)}</p>`;
+  }
+}
+
+function renderOwnerParkingLots(){
+  $("ownerLotGrid").innerHTML=ownerLots.map(lot=>`
+    <article class="owner-lot-card ${lot.id===selectedOwnerLotId?"active":""}" onclick="selectOwnerLot(${lot.id})">
+      <h3>${esc(lot.name)}</h3>
+      <div class="lot-address">${esc(lot.address)}</div>
+      <div>
+        <span class="badge">전체 ${lot.total_spaces}면</span>
+        <span class="badge">잔여 ${lot.available_spaces}면</span>
+      </div>
+      <div class="owner-lot-stats">
+        <div class="owner-lot-stat"><span>예약 중</span><strong>${lot.reserved_count}</strong></div>
+        <div class="owner-lot-stat"><span>주차 중</span><strong>${lot.parking_count}</strong></div>
+        <div class="owner-lot-stat"><span>출차 완료</span><strong>${lot.completed_count}</strong></div>
+        <div class="owner-lot-stat"><span>미결제</span><strong>${lot.unpaid_count}</strong></div>
+      </div>
+    </article>
+  `).join("");
+}
+
+async function selectOwnerLot(lotId){
+  selectedOwnerLotId=lotId;
+  renderOwnerParkingLots();
+  await loadOwnerReservations(lotId);
+}
+
+async function loadOwnerReservations(lotId){
+  try{
+    const suffix=lotId?`?parking_lot_id=${lotId}`:"";
+    ownerReservations=await api(`/api/owner/reservations${suffix}`);
+    const lot=ownerLots.find(item=>item.id===lotId);
+    $("ownerSelectedLot").textContent=lot?`${lot.name} · ${lot.address}`:"전체 소유 주차장";
+    updateOwnerSummary();
+    renderOwnerReservations();
+  }catch(error){
+    $("ownerReservationRows").innerHTML=`<tr><td colspan="9" class="error">${esc(error.message)}</td></tr>`;
+  }
+}
+
+function updateOwnerSummary(){
+  $("ownerTotal").textContent=ownerReservations.length;
+  $("ownerReserved").textContent=ownerReservations.filter(item=>operationalStatus(item.reservation_status)==="reserved").length;
+  $("ownerParking").textContent=ownerReservations.filter(item=>operationalStatus(item.reservation_status)==="parking").length;
+  $("ownerCompleted").textContent=ownerReservations.filter(item=>operationalStatus(item.reservation_status)==="completed").length;
+  $("ownerUnpaid").textContent=ownerReservations.filter(item=>item.payment_status!=="paid").length;
+}
+
+
+function renderOwnerReservations(){
+  const keyword=$("ownerKeyword").value.trim().toLowerCase();
+  const statusFilter=$("ownerStatusFilter").value;
+  const paymentFilter=$("ownerPaymentFilter").value;
+
+  const rows=ownerReservations.filter(item=>{
+    const haystack=[item.owner_user_alias,`#${item.id}`].join(" ").toLowerCase();
+    return (!keyword||haystack.includes(keyword))
+      &&(!statusFilter||operationalStatus(item.reservation_status)===statusFilter)
+      &&(!paymentFilter||item.payment_status===paymentFilter);
+  });
+
+  $("ownerEmpty").hidden=rows.length!==0;
+  $("ownerReservationRows").innerHTML=rows.map(item=>`
+    <tr>
+      <td><b>#${item.id}</b><br><span class="muted">${formatDate(item.created_at)}</span></td>
+      <td><b>${esc(item.owner_user_alias)}</b><br><span class="muted">예약별 임시 가명</span></td>
+      <td class="time-cell">${formatFullDate(item.start_time)}</td>
+      <td>${statusBadge(item.reservation_status)}</td>
+      <td class="time-cell">
+        입차: ${formatFullDate(item.check_in_at)}<br>
+        ${item.driver_check_in_signed?'<span class="badge paid">운전자 입차 검증</span>':'<span class="badge unpaid">운전자 입차 대기</span>'}
+        ${item.owner_check_in_signed?'<br><span class="badge paid">오너 입차 서명</span>':''}<br>
+        출차: ${formatFullDate(item.check_out_at)}<br>
+        ${item.driver_check_out_signed?'<span class="badge paid">운전자 출차 검증</span>':'<span class="badge unpaid">운전자 출차 대기</span>'}
+        ${item.owner_check_out_signed?'<br><span class="badge paid">오너 출차 서명</span>':''}
+      </td>
+      <td>${paymentBadge(item.payment_status)}${item.check_out_at&&item.payment_status!=="paid"?'<br><span class="error">출차 후 미결제</span>':""}<br><span class="muted">결제: ${formatFullDate(item.paid_at)}</span></td>
+      <td class="amount">${Number(item.payment_amount).toLocaleString()}원</td>
+      <td>${ownerManagementButtons(item)}</td>
+    </tr>
+  `).join("");
+}
+
+async function refreshOwnerDashboard(){
+  const previousLotId=selectedOwnerLotId;
+  ownerLots=await api("/api/owner/parking-lots");
+
+  if(!ownerLots.length){
+    selectedOwnerLotId=null;
+    ownerReservations=[];
+    $("ownerNoLots").hidden=false;
+    renderOwnerParkingLots();
+    updateOwnerSummary();
+    renderOwnerReservations();
+    return;
+  }
+
+  $("ownerNoLots").hidden=true;
+  selectedOwnerLotId=ownerLots.some(lot=>lot.id===previousLotId)?previousLotId:ownerLots[0].id;
+  renderOwnerParkingLots();
+  await loadOwnerReservations(selectedOwnerLotId);
+}
+
+function startOwnerAutoRefresh(){
+  stopOwnerAutoRefresh();
+  ownerRefreshTimer=setInterval(()=>{
+    if(currentUser?.role==="owner")refreshOwnerDashboard();
+  },10000);
+}
+
+function stopOwnerAutoRefresh(){
+  if(ownerRefreshTimer){
+    clearInterval(ownerRefreshTimer);
+    ownerRefreshTimer=null;
+  }
+}
+
+function openVehicleManager(){
+  $("vehicleForm").hidden=false;
+  $("vehiclePlate").focus();
+  loadVehicles();
+}
+
+async function registerVehicle(){
+  const plate=$("vehiclePlate").value.trim();
+  if(!plate){
+    $("vehicleStatus").innerHTML='<span class="error">차량번호를 입력하세요.</span>';
+    return;
+  }
+  try{
+    await api("/api/vehicles",{
+      method:"POST",
+      body:JSON.stringify({
+        plate_number:plate
+      })
+    });
+    $("vehiclePlate").value="";
+    $("vehicleStatus").innerHTML='<span class="success">차량을 등록했습니다.</span>';
+    await loadVehicles();
+  }catch(error){
+    $("vehicleStatus").innerHTML=`<span class="error">${esc(error.message)}</span>`;
+  }
+}
+
+async function deleteVehicle(id){
+  if(!confirm("이 차량을 삭제할까요?"))return;
+  try{
+    await api(`/api/vehicles/${id}`,{method:"DELETE"});
+    await loadVehicles();
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function loadVehicles(){
+  vehicles=await api("/api/vehicles");
+  $("reservationVehicle").innerHTML=vehicles.length
+    ?vehicles.map(v=>`<option value="${v.id}">${esc(v.plate_number)}</option>`).join("")
+    :'<option value="">등록된 차량이 없습니다</option>';
+
+  $("vehicleResults").innerHTML=vehicles.length
+    ?vehicles.map(v=>`<div class="item-card"><b>${esc(v.plate_number)}</b><div style="margin-top:8px"><button class="danger" onclick="deleteVehicle(${v.id})">삭제</button></div></div>`).join("")
+    :'<div class="empty">등록된 차량이 없습니다.</div>';
+}
+
+async function loadKakao(){
+  if(window.kakao?.maps?.services)return;
+  if(kakaoPromise)return kakaoPromise;
+
+  if(!kakaoKey){
+    const config=await api("/api/config");
+    kakaoKey=config.kakao_javascript_key||browserConfiguredKakaoKey()||"";
+  }
+
+  if(!kakaoKey||kakaoKey.includes("여기에_")){
+    throw new Error(".env 파일에 KAKAO_JAVASCRIPT_KEY를 입력하세요.");
+  }
+
+  kakaoPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    script.src=`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(kakaoKey)}&libraries=services&autoload=false`;
+    script.onload=()=>kakao.maps.load(resolve);
+    script.onerror=()=>reject(new Error("카카오맵 SDK를 불러오지 못했습니다."));
+    document.head.appendChild(script);
+  });
+  return kakaoPromise;
+}
+
+function findPlace(query){
+  return new Promise((resolve,reject)=>{
+    new kakao.maps.services.Places().keywordSearch(query,(data,status)=>{
+      if(status===kakao.maps.services.Status.OK&&data.length){
+        resolve(data[0]);
+      }else{
+        reject(new Error(`"${query}" 장소를 찾지 못했습니다.`));
+      }
+    });
+  });
+}
+
+async function searchDestination(){
+  const query=$("locationQuery").value.trim();
+  if(!query){
+    $("searchStatus").innerHTML='<span class="error">목적지를 입력하세요.</span>';
+    return;
+  }
+
+  $("searchButton").disabled=true;
+  $("searchStatus").textContent="검색 중...";
+
+  try{
+    await loadKakao();
+    selectedPlace=await findPlace(query);
+    const lat=Number(selectedPlace.y);
+    const lng=Number(selectedPlace.x);
+
+    $("mapArea").hidden=false;
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+    const center=new kakao.maps.LatLng(lat,lng);
+
+    if(!map){
+      map=new kakao.maps.Map($("map"),{center,level:4});
+    }else{
+      map.relayout();
+      map.setCenter(center);
+      map.setLevel(4);
+    }
+
+    if(destinationMarker)destinationMarker.setMap(null);
+    destinationMarker=new kakao.maps.Marker({map,position:center});
+
+    $("selectedPlace").innerHTML=`<div><b>${esc(selectedPlace.place_name)}</b><br><span class="muted">${esc(selectedPlace.road_address_name||selectedPlace.address_name)}</span></div><span class="badge">검색 기준 위치</span>`;
+
+    const lots=await api("/api/parking-lots/search",{
+      method:"POST",
+      body:JSON.stringify({
+        lat,
+        lng,
+        start_time:$("start").value,
+        radius_km:Number($("radius").value)
+      })
+    });
+
+    parkingMarkers.forEach(marker=>marker.setMap(null));
+    parkingMarkers=[];
+
+    lots.forEach(lot=>{
+      const marker=new kakao.maps.Marker({
+        map,
+        position:new kakao.maps.LatLng(lot.lat,lot.lng)
+      });
+
+      const info=new kakao.maps.InfoWindow({
+        content:`<div style="padding:10px;min-width:190px;color:#1b1b1d;background:#fff;"><b style="color:#1b1b1d;">${esc(lot.name)}</b><br><span style="color:#1b1b1d;">${esc(lot.address)}</span><br><span style="color:#1b1b1d;">출차 시 정산</span></div>`
+      });
+
+      kakao.maps.event.addListener(marker,"click",()=>info.open(map,marker));
+      parkingMarkers.push(marker);
+    });
+
+    renderLots(lots);
+    $("searchStatus").innerHTML=`<span class="success">${esc(selectedPlace.place_name)} 기준 ${lots.length}개 검색됨</span>`;
+  }catch(error){
+    $("searchStatus").innerHTML=`<span class="error">${esc(error.message)}</span>`;
+  }finally{
+    $("searchButton").disabled=false;
+  }
+}
+
+function renderLots(lots){
+  $("parkingResults").className=lots.length?"result-grid":"empty";
+  $("parkingResults").innerHTML=lots.length
+    ?lots.map(lot=>`<article class="result-card"><h3>${esc(lot.name)}</h3><div class="address">${esc(lot.address)}</div><div><span class="badge">${lot.distance_km}km</span><span class="badge">출차 시 정산</span></div><div class="actions"><button class="light" onclick="focusLot(${lot.lat},${lot.lng})">지도 보기</button><button style="color:#ffffff !important;" onclick="reserve(${lot.id})">예약하기</button></div></article>`).join("")
+    :"검색 반경 안에 예약 가능한 주차장이 없습니다.";
+}
+
+function focusLot(lat,lng){
+  if(!map)return;
+  map.panTo(new kakao.maps.LatLng(lat,lng));
+  map.setLevel(3);
+  $("mapArea").scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+
+async function reserve(parkingLotId){
+  const vehicleId=Number($("reservationVehicle").value);
+  if(!vehicleId){
+    openVehicleManager();
+    alert("차량을 먼저 등록하세요.");
+    return;
+  }
+
+  try{
+    const driverKeyBundle=await generateEd25519KeyBundle();
+    const created=await api("/api/reservations",{
+      method:"POST",
+      body:JSON.stringify({
+        parking_lot_id:parkingLotId,
+        vehicle_id:vehicleId,
+        start_time:$("start").value,
+        algorithm:driverKeyBundle.algorithm,
+        driver_temp_public_key:driverKeyBundle.publicKeyBase64
+      })
+    });
+    storePrivateKeyBundle("driver",created.id,driverKeyBundle);
+    alert("예약이 완료되었습니다. 운전자 임시 개인키는 이 브라우저에만 저장되고, 공개키만 DB에 저장됩니다.");
+    await loadReservations();
+    if(selectedPlace)await searchDestination();
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+let pendingPaymentReservationId=null;
+
+function openPaymentModal(id){
+  pendingPaymentReservationId=id;
+  $("paymentModal").hidden=false;
+}
+
+function closePaymentModal(){
+  pendingPaymentReservationId=null;
+  $("paymentModal").hidden=true;
+}
+
+async function confirmPayment(provider){
+  if(!pendingPaymentReservationId){
+    return;
+  }
+
+  try{
+    await api(`/api/reservations/${pendingPaymentReservationId}/pay`,{
+      method:"POST",
+      body:JSON.stringify({provider})
+    });
+    closePaymentModal();
+    await loadReservations();
+    alert("결제가 완료되었습니다.");
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function payReservation(id){
+  openPaymentModal(id);
+}
+
+
+function userSignatureSummary(r){
+  const inText=`입차: 운전자 ${r.driver_check_in_signed?"완료":"대기"} / 오너 ${r.owner_check_in_signed?"완료":"대기"}`;
+  const outText=`출차: 운전자 ${r.driver_check_out_signed?"완료":"대기"} / 오너 ${r.owner_check_out_signed?"완료":"대기"}`;
+  return `${inText}<br>${outText}`;
+}
+
+async function loadReservations(){
+  reservations=await api("/api/reservations");
+  $("reservationResults").innerHTML=reservations.length
+    ?reservations.map(r=>{
+      const actionButtons=[];
+      const amountText=r.reservation_status==="cancelled"
+        ?"0원"
+        :r.final_fee!==null&&r.final_fee!==undefined
+          ?`${Number(r.payment_amount).toLocaleString()}원`
+          :"출차 시 정산";
+
+      if(r.reservation_status==="completed"&&r.payment_status!=="paid"&&r.owner_check_out_signed){
+        actionButtons.push(`<button class="pay" onclick="payReservation(${r.id})">결제</button>`);
+      }
+      if(r.reservation_status==="cancelled"){
+        actionButtons.push(`<button class="danger" onclick="deleteCancelledReservation(${r.id})">삭제</button>`);
+      }
+      if(["pending","paid"].includes(r.reservation_status)&&!r.driver_check_in_signed){
+        actionButtons.push(`<button class="danger" onclick="changeReservation(${r.id},'cancel')">예약 취소</button>`);
+        actionButtons.push(`<button onclick="changeReservation(${r.id},'check-in')">운전자 입차 서명</button>`);
+      }
+      if(r.reservation_status==="checked_in"&&!r.driver_check_out_signed){
+        actionButtons.push(`<button onclick="changeReservation(${r.id},'check-out')">운전자 출차 서명</button>`);
+      }
+
+      return `<div class="item-card">
+        <b>${esc(r.parking_lot_name)}</b>
+        ${esc(r.vehicle_plate)} · ${amountText}<br>
+        ${statusBadge(r.reservation_status)}
+        ${paymentBadge(r.payment_status)}
+        <div class="muted">예약 입차: ${formatFullDate(r.start_time)}</div>
+        <div class="muted">실제 입차: ${formatFullDate(r.check_in_at)} / 실제 출차: ${formatFullDate(r.check_out_at)}</div>
+        <div class="muted">서명 상태:<br>${userSignatureSummary(r)}</div>
+        <div class="item-actions">${actionButtons.join("")||"-"}</div>
+      </div>`;
+    }).join("")
+    :'<div class="empty">예약 내역이 없습니다.</div>';
+}
+
+async function deleteCancelledReservation(id){
+  if(!confirm("취소한 예약 기록을 삭제할까요? 삭제 후에는 복구할 수 없습니다.")){
+    return;
+  }
+
+  try{
+    await api(`/api/reservations/${id}`,{method:"DELETE"});
+    await loadReservations();
+
+    if(selectedPlace){
+      await searchDestination();
+    }
+
+    alert("취소 예약 기록이 삭제되었습니다.");
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+
+
+function utf8Bytes(text){
+  if(typeof TextEncoder!=="undefined"){
+    return Array.from(new TextEncoder().encode(text));
+  }
+  return Array.from(unescape(encodeURIComponent(text)), ch=>ch.charCodeAt(0));
+}
+
+function bytesToHex(bytes){
+  return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function sha256Bytes(inputBytes){
+  const bytes=Array.from(inputBytes);
+  const K=[
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ];
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+
+  const bitLen=bytes.length*8;
+  bytes.push(0x80);
+  while(bytes.length%64!==56)bytes.push(0);
+  const hi=Math.floor(bitLen/0x100000000);
+  const lo=bitLen>>>0;
+  bytes.push((hi>>>24)&255,(hi>>>16)&255,(hi>>>8)&255,hi&255,(lo>>>24)&255,(lo>>>16)&255,(lo>>>8)&255,lo&255);
+
+  const rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let offset=0;offset<bytes.length;offset+=64){
+    const w=new Array(64);
+    for(let i=0;i<16;i++){
+      const j=offset+i*4;
+      w[i]=((bytes[j]<<24)|(bytes[j+1]<<16)|(bytes[j+2]<<8)|bytes[j+3])>>>0;
+    }
+    for(let i=16;i<64;i++){
+      const s0=(rotr(w[i-15],7)^rotr(w[i-15],18)^(w[i-15]>>>3))>>>0;
+      const s1=(rotr(w[i-2],17)^rotr(w[i-2],19)^(w[i-2]>>>10))>>>0;
+      w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
+    }
+
+    let [a,b,c,d,e,f,g,h]=H;
+    for(let i=0;i<64;i++){
+      const S1=(rotr(e,6)^rotr(e,11)^rotr(e,25))>>>0;
+      const ch=((e&f)^((~e)&g))>>>0;
+      const temp1=(h+S1+ch+K[i]+w[i])>>>0;
+      const S0=(rotr(a,2)^rotr(a,13)^rotr(a,22))>>>0;
+      const maj=((a&b)^(a&c)^(b&c))>>>0;
+      const temp2=(S0+maj)>>>0;
+      h=g; g=f; f=e; e=(d+temp1)>>>0; d=c; c=b; b=a; a=(temp1+temp2)>>>0;
+    }
+    H=[
+      (H[0]+a)>>>0,(H[1]+b)>>>0,(H[2]+c)>>>0,(H[3]+d)>>>0,
+      (H[4]+e)>>>0,(H[5]+f)>>>0,(H[6]+g)>>>0,(H[7]+h)>>>0
+    ];
+  }
+
+  const out=[];
+  H.forEach(v=>out.push((v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255));
+  return out;
+}
+
+
+const SIGNATURE_ALGORITHM="Ed25519";
+
+function arrayBufferToBase64(buffer){
+  const bytes=new Uint8Array(buffer);
+  let binary="";
+  bytes.forEach(b=>binary+=String.fromCharCode(b));
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64){
+  const binary=atob(base64);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function pemFromSpkiBase64(base64){
+  const lines=base64.match(/.{1,64}/g)||[base64];
+  return `-----BEGIN PUBLIC KEY-----\n${lines.join("\n")}\n-----END PUBLIC KEY-----`;
+}
+
+async function sha256HexText(text){
+  const encoder=new TextEncoder();
+  const buffer=await crypto.subtle.digest("SHA-256",encoder.encode(text));
+  return [...new Uint8Array(buffer)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function legacyDerInteger(bytes){
+  return Array.from(bytes);
+}
+
+
+function rawSignatureToBase64(rawBuffer){
+  return arrayBufferToBase64(rawBuffer);
+}
+
+
+function signatureStorageKey(role,reservationId){
+  return `parkingEd25519.${role}.${reservationId}`;
+}
+
+async function generateEd25519KeyBundle(){
+  if(!window.crypto?.subtle){
+    throw new Error("Ed25519 서명에는 HTTPS 환경의 WebCrypto가 필요합니다. 닷홈 HTTPS 주소로 접속하세요.");
+  }
+
+  let keyPair;
+  try{
+    keyPair=await crypto.subtle.generateKey(
+      {name:"Ed25519"},
+      true,
+      ["sign","verify"]
+    );
+  }catch(error){
+    throw new Error("현재 브라우저가 WebCrypto Ed25519를 지원하지 않습니다. Chrome/Edge 최신 버전의 HTTPS 환경에서 실행하세요.");
+  }
+
+  const publicRaw=await crypto.subtle.exportKey("raw",keyPair.publicKey);
+  const privatePkcs8=await crypto.subtle.exportKey("pkcs8",keyPair.privateKey);
+
+  return {
+    algorithm:SIGNATURE_ALGORITHM,
+    publicKeyBase64:arrayBufferToBase64(publicRaw),
+    privateKeyPkcs8Base64:arrayBufferToBase64(privatePkcs8)
+  };
+}
+
+
+function storePrivateKeyBundle(role,reservationId,bundle){
+  localStorage.setItem(signatureStorageKey(role,reservationId),JSON.stringify({
+    algorithm:bundle.algorithm,
+    publicKeyBase64:bundle.publicKeyBase64,
+    privateKeyPkcs8Base64:bundle.privateKeyPkcs8Base64,
+    createdAt:new Date().toISOString()
+  }));
+}
+
+
+function getPrivateKeyBundle(role,reservationId){
+  try{
+    const raw=localStorage.getItem(signatureStorageKey(role,reservationId));
+    return raw?JSON.parse(raw):null;
+  }catch{return null;}
+}
+
+async function signWithPrivateBundle(role,reservationId,message){
+  const bundle=getPrivateKeyBundle(role,reservationId);
+  if(!bundle?.privateKeyPkcs8Base64){
+    throw new Error(`${role==="driver"?"운전자":"오너"} 임시 개인키를 이 브라우저에서 찾을 수 없습니다. 개인키는 DB에 저장하지 않으므로, 예약을 생성/서명한 같은 브라우저에서 진행해야 합니다.`);
+  }
+
+  const privateKey=await crypto.subtle.importKey(
+    "pkcs8",
+    base64ToArrayBuffer(bundle.privateKeyPkcs8Base64),
+    {name:"Ed25519"},
+    false,
+    ["sign"]
+  );
+
+  const raw=await crypto.subtle.sign(
+    {name:"Ed25519"},
+    privateKey,
+    new TextEncoder().encode(message)
+  );
+
+  return {
+    signatureValue:arrayBufferToBase64(raw),
+    publicKeyBase64:bundle.publicKeyBase64,
+    algorithm:bundle.algorithm||SIGNATURE_ALGORITHM
+  };
+}
+
+
+function buildSignatureMessage(reservationId,signerRole,action,signedAt){
+  return `${reservationId}|${signerRole}|${action}|${signedAt}`;
+}
+
+
+
+let pendingSignatureReservationId=null;
+let pendingSignatureAction=null;
+let pendingSignerRole="driver";
+let signatureIsDrawing=false;
+let signatureHasInk=false;
+
+function openSignatureModal(id,action){
+  const reservation=reservations.find(item=>item.id===id);
+  if(!reservation){
+    alert("예약 정보를 찾을 수 없습니다. 내 예약 목록을 새로고침한 뒤 다시 시도해주세요.");
+    return;
+  }
+  const stored=getPrivateKeyBundle("driver",id);
+  if(!stored||stored.publicKeyBase64!==reservation.driver_public_key){
+    alert("이 브라우저에 해당 예약의 운전자 임시 개인키가 없습니다. 개인키는 DB에 저장하지 않기 때문에 예약을 생성한 같은 브라우저에서 서명해야 합니다.");
+    return;
+  }
+  pendingSignerRole="driver";
+  pendingSignatureReservationId=id;
+  pendingSignatureAction=action;
+  const isCheckIn=action==="check-in";
+  $("signatureTitle").textContent=isCheckIn?"운전자 입차 시간 서명":"운전자 출차 시간 서명";
+  $("signatureDescription").textContent=isCheckIn
+    ?"운전자가 입차 시각에 대해 예약별 임시 개인키로 서명합니다. 오너 확인 서명은 동시에 자동 처리됩니다."
+    :"운전자가 출차 시각에 대해 같은 예약별 임시 개인키로 서명합니다. 오너 확인 서명은 동시에 자동 처리됩니다.";
+  $("signatureTime").textContent=`서명 기준 시각: ${formatFullDate(new Date())}`;
+  $("signatureModal").hidden=false;
+  requestAnimationFrame(initSignatureCanvas);
+}
+
+async function openOwnerSignatureModal(id,action){
+  const reservation=ownerReservations.find(item=>item.id===id);
+  if(!reservation){
+    alert("예약 정보를 찾을 수 없습니다. 오너 예약 목록을 새로고침한 뒤 다시 시도해주세요.");
+    return;
+  }
+  let stored=getPrivateKeyBundle("owner",id);
+  if(!stored){
+    const bundle=await generateEd25519KeyBundle();
+    storePrivateKeyBundle("owner",id,bundle);
+    stored=getPrivateKeyBundle("owner",id);
+  }
+  if(reservation.owner_public_key&&stored.publicKeyBase64!==reservation.owner_public_key){
+    alert("이 브라우저의 오너 임시 개인키가 DB의 오너 공개키와 일치하지 않습니다. 입차 확인을 수행한 같은 브라우저에서 진행하세요.");
+    return;
+  }
+  pendingSignerRole="owner";
+  pendingSignatureReservationId=id;
+  pendingSignatureAction=action;
+  const isCheckIn=action==="check-in";
+  $("signatureTitle").textContent=isCheckIn?"오너 입차 확인 서명":"오너 출차 확인 서명";
+  $("signatureDescription").textContent=isCheckIn
+    ?"오너가 운전자 입차 서명을 검증한 뒤, 자신의 예약별 임시 개인키로 입차 확인 서명을 남깁니다."
+    :"오너가 운전자 출차 서명을 검증한 뒤, 자신의 예약별 임시 개인키로 출차 확인 서명을 남깁니다.";
+  $("signatureTime").textContent=`서명 기준 시각: ${formatFullDate(new Date())}`;
+  $("signatureModal").hidden=false;
+  requestAnimationFrame(initSignatureCanvas);
+}
+
+function closeSignatureModal(){
+  pendingSignatureReservationId=null;
+  pendingSignatureAction=null;
+  signatureIsDrawing=false;
+  $("signatureModal").hidden=true;
+}
+
+function initSignatureCanvas(){
+  const canvas=$("signatureCanvas");
+  const rect=canvas.getBoundingClientRect();
+  const ratio=window.devicePixelRatio||1;
+  canvas.width=Math.max(1,Math.floor(rect.width*ratio));
+  canvas.height=Math.max(1,Math.floor(rect.height*ratio));
+
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(ratio,0,0,ratio,0,0);
+  ctx.fillStyle="#ffffff";
+  ctx.fillRect(0,0,rect.width,rect.height);
+  ctx.strokeStyle="#1b1b1d";
+  ctx.lineWidth=3;
+  ctx.lineCap="round";
+  ctx.lineJoin="round";
+
+  signatureHasInk=false;
+  canvas.style.touchAction="none";
+
+  canvas.onpointerdown=event=>{
+    signatureIsDrawing=true;
+    signatureHasInk=true;
+    canvas.setPointerCapture(event.pointerId);
+    const point=signaturePointer(event,canvas);
+    ctx.beginPath();
+    ctx.moveTo(point.x,point.y);
+  };
+
+  canvas.onpointermove=event=>{
+    if(!signatureIsDrawing)return;
+    const point=signaturePointer(event,canvas);
+    ctx.lineTo(point.x,point.y);
+    ctx.stroke();
+  };
+
+  canvas.onpointerup=event=>{
+    signatureIsDrawing=false;
+    try{canvas.releasePointerCapture(event.pointerId)}catch{}
+  };
+
+  canvas.onpointerleave=()=>{
+    signatureIsDrawing=false;
+  };
+}
+
+function signaturePointer(event,canvas){
+  const rect=canvas.getBoundingClientRect();
+  return {
+    x:event.clientX-rect.left,
+    y:event.clientY-rect.top
+  };
+}
+
+function clearSignature(){
+  initSignatureCanvas();
+}
+
+
+async function submitSignature(){
+  if(!pendingSignatureReservationId||!pendingSignatureAction){
+    return;
+  }
+  if(!signatureHasInk){
+    alert("서명란에 서명해주세요.");
+    return;
+  }
+
+  const signatureDataUrl=$("signatureCanvas").toDataURL("image/png");
+  const signedAt=new Date().toISOString();
+  const stored=getPrivateKeyBundle(pendingSignerRole,pendingSignatureReservationId);
+  const signedMessage=buildSignatureMessage(
+    pendingSignatureReservationId,
+    pendingSignerRole,
+    pendingSignatureAction,
+    signedAt
+  );
+  const signed=await signWithPrivateBundle(pendingSignerRole,pendingSignatureReservationId,signedMessage);
+
+  try{
+    const payload={
+      signature_data_url:signatureDataUrl,
+      signed_message:signedMessage,
+      signature_value:signed.signatureValue,
+      signed_at:signedAt,
+      algorithm:signed.algorithm
+    };
+    let url=`/api/reservations/${pendingSignatureReservationId}/${pendingSignatureAction}`;
+    if(pendingSignerRole==="owner"){
+      payload.owner_temp_public_key=signed.publicKeyBase64;
+      url=`/api/owner/reservations/${pendingSignatureReservationId}/${pendingSignatureAction}/sign`;
+    }
+    await api(url,{method:"POST",body:JSON.stringify(payload)});
+
+    const actionLabel=pendingSignatureAction==="check-in"?"입차":"출차";
+    const roleLabel=pendingSignerRole==="driver"?"운전자":"오너";
+    closeSignatureModal();
+
+    if(currentUser?.role==="owner"){
+      await refreshOwnerDashboard();
+    }else{
+      await loadReservations();
+      if(selectedPlace)await searchDestination();
+    }
+    alert(`${actionLabel} 서명이 완료되었습니다. 오너 확인 서명도 동시에 처리되었습니다.`);
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function changeReservation(id,action){
+  if(action==="cancel"&&!confirm("입차 전 예약을 취소할까요?")){
+    return;
+  }
+
+  if(action==="check-in"||action==="check-out"){
+    openSignatureModal(id,action);
+    return;
+  }
+
+  try{
+    await api(`/api/reservations/${id}/${action}`,{method:"POST"});
+    await loadReservations();
+
+    if(selectedPlace){
+      await searchDestination();
+    }
+
+    if(action==="cancel"){
+      alert("예약이 취소되었습니다.");
+    }
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function restoreSession(){
+  if(!token)return;
+  try{
+    await enterRoleScreen();
+  }catch{
+    token="";
+    sessionStorage.removeItem("parkingToken");
+  }
+}
+
+setDefaultTimes();
+restoreSession();
+</script>
+
+<div id="paymentModal" class="modal-backdrop" hidden>
+  <div class="payment-modal">
+    <h2>결제 수단 선택</h2>
+    <p class="muted">사용할 간편결제 수단을 선택하세요.</p>
+
+<div class="payment-options">
+  <button class="payment-option-button" onclick="confirmPayment('kakao_pay')">
+    <img src="/image/kakao.png" alt="카카오페이">
+  </button>
+
+  <button class="payment-option-button" onclick="confirmPayment('naver_pay')">
+    <img src="/image/naver.jpg" alt="네이버페이">
+  </button>
+
+  <button class="payment-option-button" onclick="confirmPayment('toss')">
+    <img src="/image/toss.png" alt="토스">
+  </button>
+</div>
+
+    <button class="light" onclick="closePaymentModal()">취소</button>
+  </div>
+</div>
+
+
+<div id="signatureModal" class="modal-backdrop" hidden>
+  <div class="signature-modal">
+    <h2 id="signatureTitle">입차 시간 확인 서명</h2>
+    <p id="signatureDescription" class="muted">현재 시각을 확인하고 서명란에 직접 서명하세요.</p>
+    <div id="signatureTime" class="signature-time">서명 기준 시각: -</div>
+
+    <div class="signature-pad-wrap">
+      <canvas id="signatureCanvas"></canvas>
+    </div>
+
+    <p class="signature-help">마우스 또는 터치로 서명란에 직접 서명할 수 있습니다.</p>
+
+    <div class="signature-actions">
+      <button class="light" onclick="clearSignature()">다시 쓰기</button>
+      <button class="light" onclick="closeSignatureModal()">취소</button>
+      <button onclick="submitSignature()" style="color:#ffffff !important;">서명 후 처리</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="adminDetailModal" class="modal-backdrop" hidden>
+  <div class="admin-detail-modal">
+    <div class="modal-title-row">
+      <h2>서명 상세 내역</h2>
+      <button class="light small-action" onclick="closeAdminReservationDetail()">닫기</button>
+    </div>
+
+    <div id="adminDetailContent"></div>
+  </div>
+</div>
+
+</body>
+</html>
