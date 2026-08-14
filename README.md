@@ -1,2 +1,2 @@
 # LFC
-LFC
+lfc.dothome.co.kr
