@@ -1,0 +1,1888 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Parking Platform</title>
+
+  <link rel="stylesheet" href="css/styles.css">
+
+
+  <script src="config.js"></script>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="header-brand">
+        <h1>LFCSP Parking Platform</h1>
+        <p id="headerSubtitle">Smart Parking Service</p>
+      </div>
+
+      <div id="headerUser" class="header-user" hidden>
+        <button onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <img
+      class="header-logo"
+      src="image/images.png"
+      alt="Parking Platform logo"
+    >
+  </div>
+</header>
+
+<main>
+  <div id="loginScreen" class="login-wrap">
+    <div class="login-card">
+      <span class="login-kicker">LFCSP</span>
+      <h2 class="login-title">Faster Parking, Clearer Experience</h2>
+      <p class="login-copy">Sign in to access the dashboard for your account type.</p>
+      <div class="account-guide">
+        Admin: <code>admin@example.com / password123</code><br>
+        Users: <code>C1@example.com</code>, <code>C2@example.com</code>, <code>C3@example.com</code>, <code>C4@example.com</code><br>
+        Owners: <code>H1@example.com</code>, <code>H2@example.com</code>, <code>H3@example.com</code>, <code>H4@example.com</code>, <code>H5@example.com</code><br>
+        Common password: <code>password123</code>
+      </div>
+      <label>Email</label>
+      <input id="email" value="C1@example.com">
+      <label>Password</label>
+      <input id="password" type="password" value="password123" onkeydown="if(event.key==='Enter')login()">
+      <button id="loginButton" onclick="login()">Login</button>
+      <p id="loginStatus" class="status muted"></p>
+    </div>
+  </div>
+
+  <div id="adminScreen" hidden>
+
+    <div class="role-hero admin">
+      <div class="role-hero-content">
+        <span class="role-kicker">ADMIN OPERATIONS</span>
+        <h2>Manage Reservations at a Glance</h2>
+        <p>
+          Monitor reservations, check-ins, check-outs, and payment status across all parking lots
+          and quickly search for the records you need.
+        </p>
+      </div>
+    </div>
+    <section>
+      <h2>1. Parking Lot Availability</h2>
+      <p class="muted">
+        Administrators can view the total and currently available spaces for all parking lots.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Parking Lot</th>
+              <th>Owner</th>
+              <th>Address</th>
+              <th>Total</th>
+              <th>Available</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="adminLotRows"></tbody>
+        </table>
+      </div>
+      <p id="adminLotEmpty" class="empty" hidden>No parking lots have been registered.</p>
+    </section>
+
+    <section>
+      <h2>2. User Account Status</h2>
+      <p class="muted">
+        Account information is stored in the MySQL DB <code>users</code> table.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Phone</th>
+              <th>Joined At</th>
+            </tr>
+          </thead>
+          <tbody id="adminUserRows"></tbody>
+        </table>
+      </div>
+      <p id="adminUserEmpty" class="empty" hidden>No users have been registered.</p>
+    </section>
+
+    <section>
+      <h2>3. Reservation Status</h2>
+      <p class="muted">
+        View all users' reserved vehicles, pending check-ins, active parking, completed check-outs,
+        and paid or unpaid payment status.
+      </p>
+
+      <div class="summary-grid">
+        <div class="summary-card"><span>Total Reservations</span><strong id="adminTotal">0</strong></div>
+        <div class="summary-card"><span>Reserved</span><strong id="adminReserved">0</strong></div>
+        <div class="summary-card"><span>Parking</span><strong id="adminParking">0</strong></div>
+        <div class="summary-card"><span>Completed</span><strong id="adminCompleted">0</strong></div>
+        <div class="summary-card"><span>Unpaid</span><strong id="adminUnpaid">0</strong></div>
+      </div>
+
+      <div class="admin-toolbar">
+        <input id="adminKeyword" placeholder="Search vehicle plate, user, or parking lot" oninput="renderAdminReservations()">
+        <select id="adminStatusFilter" onchange="renderAdminReservations()">
+          <option value="">All usage statuses</option>
+          <option value="reserved">Reserved</option>
+          <option value="parking">Parking</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancel</option>
+        </select>
+        <select id="adminPaymentFilter" onchange="renderAdminReservations()">
+          <option value="">All payment statuses</option>
+          <option value="requested">Unpaid</option>
+          <option value="paid">Paid</option>
+          <option value="refunded">Refunded</option>
+          <option value="failed">Payment Failed</option>
+        </select>
+        <button onclick="loadAdminDashboard()">Refresh</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Reservation</th>
+              <th>User</th>
+              <th>Vehicle</th>
+              <th>Parking Lot</th>
+              <th>Reserved Check-in Time (KST)</th>
+              <th>Usage Status</th>
+              <th>Check-in / Check-out Record</th>
+              <th>Payment Status</th>
+              <th>Payment Amount</th>
+              <th>Manage</th>
+            </tr>
+          </thead>
+          <tbody id="adminReservationRows"></tbody>
+        </table>
+      </div>
+      <p id="adminEmpty" class="empty" hidden>No reservations match the selected filters.</p>
+      <p class="admin-note">The admin dashboard refreshes automatically every 10 seconds.</p>
+    </section>
+  </div>
+
+  <div id="ownerScreen" hidden>
+
+    <div class="role-hero owner">
+      <div class="role-hero-content">
+        <span class="role-kicker">PARKING OWNER</span>
+        <h2>View Your Parking Lot Operations</h2>
+        <p>
+          Check reserved vehicles, currently parked vehicles,
+          and check-out and payment status in one place.
+        </p>
+      </div>
+    </div>
+    <section>
+      <h2>1. My Parking Lots</h2>
+      <p class="muted">
+        View reservation, check-in/check-out, and payment status using reservation pseudonyms.
+      </p>
+      <div id="ownerLotGrid" class="owner-lot-grid"></div>
+      <p id="ownerNoLots" class="empty" hidden>No owned parking lots have been registered.</p>
+    </section>
+
+    <section>
+      <h2>2. Parking Lot Reservation and Vehicle Status</h2>
+      <p id="ownerSelectedLot" class="muted">Select a parking lot.</p>
+
+      <div class="summary-grid">
+        <div class="summary-card"><span>Total Reservations</span><strong id="ownerTotal">0</strong></div>
+        <div class="summary-card"><span>Reserved</span><strong id="ownerReserved">0</strong></div>
+        <div class="summary-card"><span>Parking</span><strong id="ownerParking">0</strong></div>
+        <div class="summary-card"><span>Completed</span><strong id="ownerCompleted">0</strong></div>
+        <div class="summary-card"><span>Unpaid</span><strong id="ownerUnpaid">0</strong></div>
+      </div>
+
+      <div class="owner-toolbar">
+        <input id="ownerKeyword" placeholder="Search reservation pseudonym" oninput="renderOwnerReservations()">
+        <select id="ownerStatusFilter" onchange="renderOwnerReservations()">
+          <option value="">All usage statuses</option>
+          <option value="reserved">Reserved</option>
+          <option value="parking">Parking</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancel</option>
+        </select>
+        <select id="ownerPaymentFilter" onchange="renderOwnerReservations()">
+          <option value="">All payment statuses</option>
+          <option value="requested">Unpaid</option>
+          <option value="paid">Paid</option>
+          <option value="refunded">Refunded</option>
+          <option value="failed">Payment Failed</option>
+        </select>
+        <button onclick="refreshOwnerDashboard()">Refresh</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Reservation</th>
+              <th>Reservation Pseudonym</th>
+              <th>Reserved Check-in Time (KST)</th>
+              <th>Usage Status</th>
+              <th>Check-in / Check-out Record</th>
+              <th>Payment Status</th>
+              <th>Payment Amount</th>
+              <th>Manage</th>
+            </tr>
+          </thead>
+          <tbody id="ownerReservationRows"></tbody>
+        </table>
+      </div>
+      <p id="ownerEmpty" class="empty" hidden>There are no reservations for this parking lot.</p>
+      <p class="admin-note">The owner dashboard refreshes automatically every 10 seconds.</p>
+    </section>
+  </div>
+
+  <div id="userScreen" hidden>
+
+    <div class="role-hero user">
+      <div class="role-hero-content">
+        <span class="role-kicker">SMART PARKING</span>
+        <h2>Make Urban Parking Faster and Smoother</h2>
+        <p style="color: #1b1b1d;">
+          Search for a destination, choose a nearby parking lot,
+          and reserve it with your registered vehicle.
+        </p>
+      </div>
+    </div>
+    <section>
+      <h2>1. Map Search</h2>
+      <p class="muted">Search for a place to display nearby parking lots based on that location.</p>
+      <div class="search-row">
+        <div>
+          <label>Destination</label>
+          <input id="locationQuery" value="Gangnam Station" onkeydown="if(event.key==='Enter')searchDestination()">
+        </div>
+        <button id="searchButton" onclick="searchDestination()">Search</button>
+      </div>
+      <div class="three">
+        <div><label>Reserved Check-in Time (KST)</label><input id="start" type="text" placeholder="YYYY-MM-DD hh:mm AM (KST)" onblur="normalizeStartField()"></div>
+        <div>
+          <label>Search Radius</label>
+          <select id="radius">
+            <option value="1">1km</option>
+            <option value="3" selected>3km</option>
+            <option value="5">5km</option>
+            <option value="10">10km</option>
+          </select>
+        </div>
+      </div>
+      <p id="searchStatus" class="status muted">Enter a destination and search.</p>
+      <div id="mapArea" hidden>
+        <div id="selectedPlace" class="selected-place"></div>
+        <div id="map"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Search Results</h2>
+      <div id="parkingResults" class="empty">No search has been performed yet.</div>
+    </section>
+
+    <section>
+      <h2>3. Vehicles and Reservations</h2>
+      <div class="vr-grid">
+        <div class="subpanel">
+          <div class="subhead">
+            <h3>My Vehicles</h3>
+            <button class="secondary" onclick="openVehicleManager()">Load / Register Vehicle</button>
+          </div>
+          <div id="vehicleForm" class="vehicle-form" hidden>
+            <label>Vehicle Plate Number</label>
+            <input id="vehiclePlate" placeholder="e.g., 12AB3456">
+            <div class="form-actions">
+              <button onclick="registerVehicle()">Register Vehicle</button>
+              <button class="light" onclick="$('vehicleForm').hidden=true">Close</button>
+            </div>
+            <p id="vehicleStatus" class="status muted"></p>
+          </div>
+          <div class="vehicle-select">
+            <label>Vehicle for Reservation</label>
+            <select id="reservationVehicle"></select>
+          </div>
+          <div id="vehicleResults"></div>
+        </div>
+
+        <div class="subpanel">
+          <div class="subhead">
+            <h3>My Reservations</h3>
+            <button class="secondary" onclick="loadReservations()">Refresh Reservations</button>
+          </div>
+          <div id="reservationResults"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+let token=sessionStorage.getItem("parkingToken")||"";
+let temporaryKeyId=sessionStorage.getItem("temporaryKeyId")||"";
+let temporaryPrivateKey=sessionStorage.getItem("temporaryPrivateKey")||"";
+let currentUser=null;
+let kakaoKey="";
+let kakaoPromise=null;
+let map=null;
+let selectedPlace=null;
+let destinationMarker=null;
+let parkingMarkers=[];
+let vehicles=[];
+let reservations=[];
+let adminUsers=[];
+let adminParkingLots=[];
+let adminReservations=[];
+let adminRefreshTimer=null;
+let ownerLots=[];
+let ownerReservations=[];
+let selectedOwnerLotId=null;
+let ownerRefreshTimer=null;
+
+function browserConfiguredKakaoKey(){
+  return window.PARKING_CONFIG?.KAKAO_JAVASCRIPT_KEY || "";
+}
+
+const $=id=>document.getElementById(id);
+const esc=value=>String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+const pad=n=>String(n).padStart(2,"0");
+const localDate=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+
+
+function ko(hex){
+  try{
+    return decodeURIComponent(hex.replace(/../g,"%$&"));
+  }catch(_){
+    return "";
+  }
+}
+
+function forceEnglishText(value){
+  let text=String(value??"");
+  const replacements=[
+    [ko("eab095eb82a8ec97ad20ec84bced84b020eca3bcecb0a8ec9ea5"),"Gangnam Station Central Parking Lot"],
+    [ko("ec97adec82bc20eab3b5ec9ca020eca3bcecb0a8ec9ea5"),"Yeoksam Shared Parking Lot"],
+    [ko("ec849cecb48820ebb295ec9b9020ec958e20eca3bcecb0a8ec9ea5"),"Seocho Court Parking Lot"],
+    [ko("ec9588ec958cec97ad20eca09ced9cbc20eca3bcecb0a8ec9ea5"),"Anam Station Partner Parking Lot"],
+    [ko("eab3a0eba0a4eb8c8020ec958e20eab3b5ec9ca020eca3bcecb0a8ec9ea5"),"Korea University Shared Parking Lot"],
+    [ko("eab095eb82a8ec97ad"),"Gangnam Station"],
+    [ko("ec97adec82bceca5adeca595"),"Yeoksam Station"],
+    [ko("ec849cecb488eca5adeca595"),"Seocho Station"],
+    [ko("ec9588ec958cec97ad"),"Anam Station"],
+    [ko("eab3a0eba0a4eb8c80"),"Korea University"],
+    [ko("ec84b8ec9ab8ed8ab9ebb384ec8b9c"),"Seoul"],
+    [ko("ec84b8ec9ab8ec8b9c"),"Seoul"],
+    [ko("ec84b8ec9ab8"),"Seoul"],
+    [ko("eab095eb82a8eab5ac"),"Gangnam-gu"],
+    [ko("ec849cecb488eab5ac"),"Seocho-gu"],
+    [ko("ec84b1ebb681eab5ac"),"Seongbuk-gu"],
+    [ko("eab095eb82a8eb8c80eba19c"),"Gangnam-daero"],
+    [ko("ed858ced97a4eb9e80eba19c"),"Teheran-ro"],
+    [ko("ec849cecb488eca491ec9584eba19c"),"Seochojungang-ro"],
+    [ko("ec9588ec958ceba19c"),"Anam-ro"],
+    [ko("eab3a0eba0a4eb8c80eba19c"),"Korea-daero"],
+    [ko("eca3bcecb0a8ec9ea5"),"Parking Lot"],
+    [ko("eca7c0ed9598"),"underground"],
+    [ko("ebb28820ecb69ceab5ac"),"Exit"],
+    [ko("ed98b8ec84a0"),"Line"],
+    [ko("ec9b90"),"KRW"],
+    [ko("eba9b4"),"spaces"],
+    [ko("eab09c"),"results"]
+  ];
+  for(const [source,target] of replacements){
+    if(source) text=text.split(source).join(target);
+  }
+  text=text.replace(/[\u3131-\u318E\uAC00-\uD7A3]+/g,"").replace(/\s{2,}/g," ").trim();
+  return text;
+}
+
+function lotDisplayName(lot){
+  const raw=lot?.display_name||lot?.english_name||lot?.name||"";
+  return forceEnglishText(raw)||"Parking Lot";
+}
+
+function lotDisplayAddress(lot){
+  const raw=lot?.display_address||lot?.english_address||lot?.address||"";
+  return forceEnglishText(raw)||"Seoul";
+}
+
+function placeDisplayName(place){
+  const query=document.getElementById("locationQuery")?.value?.trim()||"";
+  const fromQuery=forceEnglishText(query);
+  if(fromQuery)return fromQuery;
+  return forceEnglishText(place?.place_name)||"Selected Destination";
+}
+
+function placeDisplayAddress(place){
+  const lat=Number(place?.y);
+  const lng=Number(place?.x);
+  if(Number.isFinite(lat)&&Number.isFinite(lng)){
+    return `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }
+  return "Selected destination";
+}
+
+function kstDateParts(value){
+  if(!value)return null;
+  const date=value instanceof Date ? value : new Date(value);
+  if(Number.isNaN(date.getTime()))return null;
+
+  const parts=new Intl.DateTimeFormat("en-US",{
+    timeZone:"Asia/Seoul",
+    year:"numeric",
+    month:"2-digit",
+    day:"2-digit",
+    hour:"2-digit",
+    minute:"2-digit",
+    hour12:true
+  }).formatToParts(date);
+
+  const map={};
+  for(const part of parts){
+    if(part.type!=="literal")map[part.type]=part.value;
+  }
+  map.dayPeriod=(map.dayPeriod||"").toUpperCase();
+  return map;
+}
+
+function to24Hour(hour,period){
+  let h=Number(hour);
+  const p=String(period||"").toUpperCase();
+  if(p==="AM"&&h===12)h=0;
+  if(p==="PM"&&h<12)h+=12;
+  return String(h).padStart(2,"0");
+}
+
+function dateToKstServerValue(value){
+  const p=kstDateParts(value);
+  if(!p)return "";
+  return `${p.year}-${p.month}-${p.day}T${to24Hour(p.hour,p.dayPeriod)}:${p.minute}`;
+}
+
+function formatKstInput(value){
+  const p=kstDateParts(value);
+  if(!p)return "";
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute} ${p.dayPeriod} (KST)`;
+}
+
+function parseKstInput(value){
+  const text=String(value??"").trim();
+  if(!text)return "";
+
+  if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(text)){
+    return text;
+  }
+
+  const match=text.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})\s*(AM|PM)(?:\s*\(KST\))?$/i);
+  if(match){
+    const [,year,month,day,hour,minute,period]=match;
+    return `${year}-${month}-${day}T${to24Hour(hour,period)}:${minute}`;
+  }
+
+  const parsed=new Date(text);
+  if(!Number.isNaN(parsed.getTime())){
+    return dateToKstServerValue(parsed);
+  }
+
+  return text;
+}
+
+function normalizeStartField(){
+  const parsed=parseKstInput($("start").value);
+  if(!parsed)return;
+  const normalized=formatKstInput(parsed);
+  if(normalized)$("start").value=normalized;
+}
+
+function formatDate(value){
+  const p=kstDateParts(value);
+  if(!p)return "-";
+  return `${p.month}-${p.day} ${p.hour}:${p.minute} ${p.dayPeriod} (KST)`;
+}
+
+function formatFullDate(value){
+  const p=kstDateParts(value);
+  if(!p)return "-";
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute} ${p.dayPeriod} (KST)`;
+}
+
+function setDefaultTimes(){
+  const now=new Date();
+  const start=new Date(Math.ceil(now.getTime()/600000)*600000);
+  $("start").value=formatKstInput(start);
+}
+
+
+function phpApiUrl(path){
+  const methodPath=String(path);
+  const [base,query=""] = methodPath.split("?");
+
+  const directMap={
+    "/api/auth/login":"api/login.php",
+    "/api/auth/me":"api/me.php",
+    "/api/auth/logout":"api/logout.php",
+    "/api/config":"api/config.php",
+    "/api/admin/users":"api/admin_users.php",
+    "/api/admin/parking-lots":"api/admin_parking_lots.php",
+    "/api/admin/reservations":"api/admin_reservations.php",
+    "/api/owner/parking-lots":"api/owner_parking_lots.php",
+    "/api/owner/reservations":"api/owner_reservations.php",
+    "/api/parking-lots/search":"api/parking_lots_search.php",
+    "/api/vehicles":"api/vehicles.php",
+    "/api/reservations":"api/reservations.php"
+  };
+
+  let target=directMap[base];
+
+  let match=base.match(/^\/api\/vehicles\/(\d+)$/);
+  if(match)target=`api/delete_vehicle.php?id=${match[1]}`;
+
+  match=base.match(/^\/api\/reservations\/(\d+)$/);
+  if(match)target=`api/delete_reservation.php?id=${match[1]}`;
+
+  match=base.match(/^\/api\/reservations\/(\d+)\/([^/]+)$/);
+  if(match)target=`api/reservation_action.php?id=${match[1]}&action=${encodeURIComponent(match[2])}`;
+
+
+  match=base.match(/^\/api\/reservations\/(\d+)\/driver-key$/);
+  if(match)target=`api/driver_public_key.php?id=${match[1]}`;
+
+  match=base.match(/^\/api\/owner\/reservations\/(\d+)\/([^/]+)\/sign$/);
+  if(match)target=`api/owner_signature_action.php?id=${match[1]}&action=${encodeURIComponent(match[2])}`;
+
+  match=base.match(/^\/api\/admin\/reservations\/(\d+)$/);
+  if(match)target=`api/admin_delete_reservation.php?id=${match[1]}`;
+
+  match=base.match(/^\/api\/owner\/reservations\/(\d+)$/);
+  if(match)target=`api/owner_delete_reservation.php?id=${match[1]}`;
+
+  if(!target)target=base.replace(/^\/+/,"");
+
+  if(query){
+    target += target.includes("?") ? `&${query}` : `?${query}`;
+  }
+
+  return target;
+}
+
+async function api(path,options={}){
+  const response=await fetch(phpApiUrl(path),{
+    ...options,
+    credentials:"include",
+    headers:{
+      "Content-Type":"application/json",
+      ...(token?{Authorization:`Bearer ${token}`}:{})
+    }
+  });
+
+  const raw=await response.text();
+  let data=null;
+  if(raw){
+    try{data=JSON.parse(raw)}catch{data={detail:raw}}
+  }
+
+  if(!response.ok){
+    throw new Error(data?.detail||`HTTP ${response.status}`);
+  }
+  return data;
+}
+
+async function login(){
+  $("loginButton").disabled=true;
+  $("loginStatus").textContent="Logging in...";
+  try{
+    const result=await api("/api/auth/login",{
+      method:"POST",
+      body:JSON.stringify({
+        email:$("email").value.trim(),
+        password:$("password").value
+      })
+    });
+    token=result.access_token;
+    temporaryKeyId=result.temporary_key_id||"";
+    temporaryPrivateKey=result.temporary_private_key||"";
+        sessionStorage.setItem("parkingToken",token);
+    sessionStorage.setItem("temporaryKeyId",temporaryKeyId);
+    sessionStorage.setItem("temporaryPrivateKey",temporaryPrivateKey);
+        await enterRoleScreen();
+  }catch(error){
+    $("loginStatus").innerHTML=`<span class="error">${esc(error.message)}</span>`;
+  }finally{
+    $("loginButton").disabled=false;
+  }
+}
+
+async function enterRoleScreen(){
+  currentUser=await api("/api/auth/me");
+  $("loginScreen").hidden=true;
+  $("headerUser").hidden=false;
+
+  $("adminScreen").hidden=true;
+  $("ownerScreen").hidden=true;
+  $("userScreen").hidden=true;
+
+  $("headerSubtitle").textContent =
+    `${currentUser.name} · ${currentUser.role.toUpperCase()}`;
+
+  if(currentUser.role==="admin"){
+    $("adminScreen").hidden=false;
+    await loadAdminDashboard();
+    startAdminAutoRefresh();
+  }else if(currentUser.role==="owner"){
+    $("ownerScreen").hidden=false;
+    await loadOwnerParkingLots();
+    startOwnerAutoRefresh();
+  }else{
+    $("userScreen").hidden=false;
+    await Promise.all([loadVehicles(),loadReservations()]);
+  }
+}
+
+async function logout(){
+  try{ await api("/api/auth/logout",{method:"POST"}); }catch{}
+  stopAdminAutoRefresh();
+  stopOwnerAutoRefresh();
+  token="";
+  currentUser=null;
+  temporaryKeyId="";
+  temporaryPrivateKey="";
+  temporaryKeyFingerprint="";
+  sessionStorage.removeItem("parkingToken");
+  sessionStorage.removeItem("temporaryKeyId");
+  sessionStorage.removeItem("temporaryPrivateKey");
+    $("adminScreen").hidden=true;
+  $("ownerScreen").hidden=true;
+  $("userScreen").hidden=true;
+  $("loginScreen").hidden=false;
+  $("headerUser").hidden=true;
+  $("headerSubtitle").textContent="Smart Parking Service";
+}
+
+function operationalStatus(value){
+  if(value==="pending"||value==="paid")return "reserved";
+  if(value==="checked_in")return "parking";
+  if(value==="completed")return "completed";
+  return value;
+}
+
+function operationalLabel(value){
+  return {
+    reserved:"Reserved",
+    parking:"Parking",
+    completed:"Completed",
+    cancelled:"Cancel"
+  }[operationalStatus(value)]||value;
+}
+
+function paymentLabel(value){
+  return {
+    requested:"Unpaid",
+    paid:"Paid",
+    refunded:"Refunded",
+    failed:"No Payment"
+  }[value]||value;
+}
+
+function statusBadge(value){
+  const status=operationalStatus(value);
+  return `<span class="badge ${status}">${operationalLabel(value)}</span>`;
+}
+
+function paymentBadge(value){
+  const css=value==="paid"?"paid":"unpaid";
+  return `<span class="badge ${css}">${paymentLabel(value)}</span>`;
+}
+
+
+async function loadAdminDashboard(){
+  await Promise.all([
+    loadAdminUsers(),
+    loadAdminParkingLots(),
+    loadAdminReservations()
+  ]);
+}
+
+async function loadAdminUsers(){
+  try{
+    adminUsers=await api("/api/admin/users");
+    renderAdminUsers();
+  }catch(error){
+    $("adminUserRows").innerHTML=`<tr><td colspan="6" class="error">${esc(error.message)}</td></tr>`;
+  }
+}
+
+function roleBadge(role){
+  const label={admin:"Admin",user:"User",owner:"Owner"}[role]||role;
+  return `<span class="badge">${esc(label)}</span>`;
+}
+
+function renderAdminUsers(){
+  $("adminUserEmpty").hidden=adminUsers.length!==0;
+  $("adminUserRows").innerHTML=adminUsers.map(user=>`
+    <tr>
+      <td><b>#${user.id}</b></td>
+      <td><b>${esc(user.name)}</b></td>
+      <td>${esc(user.email)}</td>
+      <td>${roleBadge(user.role)}</td>
+      <td>${esc(user.phone||"-")}</td>
+      <td class="time-cell">${formatFullDate(user.created_at)}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadAdminParkingLots(){
+  try{
+    adminParkingLots=await api("/api/admin/parking-lots");
+    renderAdminParkingLots();
+  }catch(error){
+    $("adminLotRows").innerHTML=`<tr><td colspan="6" class="error">${esc(error.message)}</td></tr>`;
+  }
+}
+
+function renderAdminParkingLots(){
+  $("adminLotEmpty").hidden=adminParkingLots.length!==0;
+  $("adminLotRows").innerHTML=adminParkingLots.map(lot=>`
+    <tr>
+      <td><b>${esc(lotDisplayName(lot))}</b><br><span class="muted">#${lot.id}</span></td>
+      <td><b>${esc(lot.owner_name||"-")}</b><br><span class="muted">${esc(lot.owner_email||"-")}</span></td>
+      <td>${esc(lotDisplayAddress(lot))}</td>
+      <td class="amount">${Number(lot.total_spaces).toLocaleString()} spaces</td>
+      <td class="amount">${Number(lot.available_spaces).toLocaleString()} spaces</td>
+      <td>${lot.is_active?'<span class="badge paid">Active</span>':'<span class="badge completed">Inactive</span>'}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadAdminReservations(){
+  try{
+    adminReservations=normalizeAdminReservationSignatures(await api("/api/admin/reservations"));
+    updateAdminSummary();
+    renderAdminReservations();
+  }catch(error){
+    $("adminReservationRows").innerHTML=`<tr><td colspan="10" class="error">${esc(error.message)}</td></tr>`;
+  }
+}
+
+function updateAdminSummary(){
+  $("adminTotal").textContent=adminReservations.length;
+  $("adminReserved").textContent=adminReservations.filter(r=>operationalStatus(r.reservation_status)==="reserved").length;
+  $("adminParking").textContent=adminReservations.filter(r=>operationalStatus(r.reservation_status)==="parking").length;
+  $("adminCompleted").textContent=adminReservations.filter(r=>operationalStatus(r.reservation_status)==="completed").length;
+  $("adminUnpaid").textContent=adminReservations.filter(r=>r.payment_status!=="paid").length;
+}
+
+
+
+function normalizeAdminReservationSignatures(items){
+  return items.map(item=>({
+    ...item,
+    check_in_signed:item.driver_check_in_signed||item.check_in_signed||!!item.check_in_key_id,
+    check_out_signed:item.driver_check_out_signed||item.check_out_signed||!!item.check_out_key_id
+  }));
+}
+
+
+function completedPaidDeleteButton(item,scope){
+  if(item.reservation_status==="completed"&&item.payment_status==="paid"){
+    return `<button class="danger small-action" onclick="deleteCompletedRecord(${item.id},'${scope}')">Delete Record</button>`;
+  }
+  return '<span class="muted">-</span>';
+}
+
+function ownerManagementButtons(item){
+  const buttons=[];
+  if(item.reservation_status==="completed"&&item.payment_status==="paid"){
+    buttons.push(`<button class="danger small-action" onclick="deleteCompletedRecord(${item.id},'owner')">Delete Record</button>`);
+  }
+  return buttons.length?`<div class="action-stack">${buttons.join("")}</div>`:'<span class="muted">-</span>';
+}
+
+async function deleteCompletedRecord(id,scope){
+  const label=scope==="admin"?"with administrator privileges":"with owner privileges";
+  if(!confirm(`${label} Delete this paid usage record? This action cannot be undone.`)){
+    return;
+  }
+
+  const url=scope==="admin"
+    ?`/api/admin/reservations/${id}`
+    :`/api/owner/reservations/${id}`;
+
+  try{
+    await api(url,{method:"DELETE"});
+
+    if(scope==="admin"){
+      await loadAdminDashboard();
+    }else{
+      await loadOwnerParkingLots();
+      await loadOwnerReservations(selectedOwnerLotId);
+    }
+
+    alert("The usage record has been deleted.");
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+
+function signatureBadge(label,ok){
+  return ok?`<span class="badge paid">${label} Completed</span>`:`<span class="badge unpaid">${label} Pending</span>`;
+}
+
+function adminSignatureKeyBlock(item,type){
+  const isIn=type==="in";
+  const label=isIn?"Check-in":"Check-out";
+  const driverOk=isIn?item.driver_check_in_signed:item.driver_check_out_signed;
+  const ownerOk=isIn?item.owner_check_in_signed:item.owner_check_out_signed;
+  return `
+    <div class="admin-signature-key">
+      ${signatureBadge(`Driver ${label}`,driverOk)}<br>
+      ${signatureBadge(`Owner ${label}`,ownerOk)}
+    </div>
+  `;
+}
+
+function adminSignaturePairDetail(item,type){
+  const isIn=type==="in";
+  const label=isIn?"Check-in":"Check-out";
+  const driverMsg=isIn?item.driver_check_in_message:item.driver_check_out_message;
+  const driverSig=isIn?item.driver_check_in_signature_value:item.driver_check_out_signature_value;
+  const driverAt=isIn?item.driver_check_in_signed_at:item.driver_check_out_signed_at;
+  const driverVerified=isIn?item.driver_check_in_verified_at:item.driver_check_out_verified_at;
+  const ownerMsg=isIn?item.owner_check_in_message:item.owner_check_out_message;
+  const ownerSig=isIn?item.owner_check_in_signature_value:item.owner_check_out_signature_value;
+  const ownerAt=isIn?item.owner_check_in_signed_at:item.owner_check_out_signed_at;
+  const ownerVerified=isIn?item.owner_check_in_verified_at:item.owner_check_out_verified_at;
+  return `
+    <div class="detail-block">
+      <h3>${label} Dual Signatures</h3>
+      <dl class="detail-list">
+        <dt>Driver ${label} Signature</dt>
+        <dd>${signatureBadge("Driver",!!driverSig)}<br><span class="muted">Signed At (KST): ${formatFullDate(driverAt)} / Verified At (KST): ${formatFullDate(driverVerified)}</span></dd>
+        <dt>Driver Signed Message</dt>
+        <dd><code>${esc(driverMsg||"-")}</code></dd>
+        <dt>Driver Signature Value</dt>
+        <dd><code>${esc(driverSig?driverSig.slice(0,96)+"...":"-")}</code></dd>
+        <dt>Owner ${label} Signature</dt>
+        <dd>${signatureBadge("Owner",!!ownerSig)}<br><span class="muted">Signed At (KST): ${formatFullDate(ownerAt)} / Verified At (KST): ${formatFullDate(ownerVerified)}</span></dd>
+        <dt>Owner Signed Message</dt>
+        <dd><code>${esc(ownerMsg||"-")}</code></dd>
+        <dt>Owner Signature Value</dt>
+        <dd><code>${esc(ownerSig?ownerSig.slice(0,96)+"...":"-")}</code></dd>
+      </dl>
+    </div>
+  `;
+}
+
+function adminManagementButtons(item){
+  const deleteButton=(item.reservation_status==="completed"&&item.payment_status==="paid")
+    ? `<button class="danger small-action" onclick="deleteCompletedRecord(${item.id},'admin')">Delete Record</button>`
+    : "";
+
+  return `
+    <div class="action-stack">
+      ${deleteButton}
+      <button class="small-action" onclick="openAdminReservationDetail(${item.id})">Details</button>
+    </div>
+  `;
+}
+
+function openAdminReservationDetail(id){
+  const item=adminReservations.find(reservation=>reservation.id===id);
+  if(!item){
+    alert("Reservation details could not be found.");
+    return;
+  }
+
+  $("adminDetailContent").innerHTML=`
+    <div class="detail-summary">
+      <h3>Reservation #${item.id}</h3>
+      <p class="muted">Detailed records of the driver's signature and the automatically generated owner confirmation signature.</p>
+    </div>
+
+    <div class="detail-block">
+      <h3>User Identity</h3>
+      <dl class="detail-list">
+        <dt>User</dt>
+        <dd>${esc(item.user_name)}</dd>
+
+        <dt>Email</dt>
+        <dd>${esc(item.user_email)}</dd>
+
+        <dt>Vehicle</dt>
+        <dd>${esc(item.vehicle_plate)}</dd>
+
+        <dt>Parking Lot</dt>
+        <dd>${esc(forceEnglishText(item.parking_lot_name))}</dd>
+      </dl>
+    </div>
+
+    ${adminSignaturePairDetail(item,"in")}
+    ${adminSignaturePairDetail(item,"out")}
+
+    <p class="muted detail-help">
+      The administrator DB does not store private keys. It stores only the driver's and owner's temporary public keys, signed messages, and signature values.
+    </p>
+  `;
+
+  $("adminDetailModal").hidden=false;
+}
+
+function closeAdminReservationDetail(){
+  $("adminDetailModal").hidden=true;
+  $("adminDetailContent").innerHTML="";
+}
+
+function renderAdminReservations(){
+  const keyword=$("adminKeyword").value.trim().toLowerCase();
+  const statusFilter=$("adminStatusFilter").value;
+  const paymentFilter=$("adminPaymentFilter").value;
+
+  const rows=adminReservations.filter(item=>{
+    const haystack=[
+      item.user_name,item.user_email,item.vehicle_plate,
+      item.parking_lot_name
+    ].join(" ").toLowerCase();
+
+    return (!keyword||haystack.includes(keyword))
+      &&(!statusFilter||operationalStatus(item.reservation_status)===statusFilter)
+      &&(!paymentFilter||item.payment_status===paymentFilter);
+  });
+
+  $("adminEmpty").hidden=rows.length!==0;
+  $("adminReservationRows").innerHTML=rows.map(item=>`
+    <tr>
+      <td><b>#${item.id}</b><br><span class="muted">${formatDate(item.created_at)}</span></td>
+      <td><b>${esc(item.user_name)}</b><br><span class="muted">${esc(item.user_email)}</span></td>
+      <td><b>${esc(item.vehicle_plate)}</b></td>
+      <td>${esc(forceEnglishText(item.parking_lot_name))}</td>
+      <td class="time-cell">${formatFullDate(item.start_time)}</td>
+      <td>${statusBadge(item.reservation_status)}</td>
+      <td class="time-cell">Check-in: ${formatFullDate(item.check_in_at)}<br>${adminSignatureKeyBlock(item,'in')}<br>Check-out: ${formatFullDate(item.check_out_at)}<br>${adminSignatureKeyBlock(item,'out')}</td>
+      <td>${paymentBadge(item.payment_status)}${item.check_out_at&&item.payment_status!=="paid"?'<br><span class="error">Unpaid after check-out</span>':""}<br><span class="muted">Pay: ${formatFullDate(item.paid_at)}</span></td>
+      <td class="amount">${Number(item.payment_amount).toLocaleString()} KRW</td>
+      <td>${adminManagementButtons(item)}</td>
+    </tr>
+  `).join("");
+}
+
+function startAdminAutoRefresh(){
+  stopAdminAutoRefresh();
+  adminRefreshTimer=setInterval(()=>{
+    if(currentUser?.role==="admin"){
+      loadAdminDashboard();
+    }
+  },10000);
+}
+
+function stopAdminAutoRefresh(){
+  if(adminRefreshTimer){
+    clearInterval(adminRefreshTimer);
+    adminRefreshTimer=null;
+  }
+}
+
+
+async function loadOwnerParkingLots(){
+  try{
+    ownerLots=await api("/api/owner/parking-lots");
+
+    if(!ownerLots.length){
+      selectedOwnerLotId=null;
+      ownerReservations=[];
+      $("ownerNoLots").hidden=false;
+      renderOwnerParkingLots();
+      updateOwnerSummary();
+      renderOwnerReservations();
+      $("ownerSelectedLot").textContent="No owned parking lots have been registered.";
+      return;
+    }
+
+    $("ownerNoLots").hidden=true;
+
+    if(!selectedOwnerLotId||!ownerLots.some(lot=>lot.id===selectedOwnerLotId)){
+      selectedOwnerLotId=ownerLots[0].id;
+    }
+
+    renderOwnerParkingLots();
+    await loadOwnerReservations(selectedOwnerLotId);
+  }catch(error){
+    $("ownerLotGrid").innerHTML=`<p class="error">${esc(error.message)}</p>`;
+  }
+}
+
+function renderOwnerParkingLots(){
+  $("ownerLotGrid").innerHTML=ownerLots.map(lot=>`
+    <article class="owner-lot-card ${lot.id===selectedOwnerLotId?"active":""}" onclick="selectOwnerLot(${lot.id})">
+      <h3>${esc(lotDisplayName(lot))}</h3>
+      <div class="lot-address">${esc(lotDisplayAddress(lot))}</div>
+      <div>
+        <span class="badge">Total ${lot.total_spaces} spaces</span>
+        <span class="badge">Available ${lot.available_spaces} spaces</span>
+      </div>
+      <div class="owner-lot-stats">
+        <div class="owner-lot-stat"><span>Reserved</span><strong>${lot.reserved_count}</strong></div>
+        <div class="owner-lot-stat"><span>Parking</span><strong>${lot.parking_count}</strong></div>
+        <div class="owner-lot-stat"><span>Completed</span><strong>${lot.completed_count}</strong></div>
+        <div class="owner-lot-stat"><span>Unpaid</span><strong>${lot.unpaid_count}</strong></div>
+      </div>
+    </article>
+  `).join("");
+}
+
+async function selectOwnerLot(lotId){
+  selectedOwnerLotId=lotId;
+  renderOwnerParkingLots();
+  await loadOwnerReservations(lotId);
+}
+
+async function loadOwnerReservations(lotId){
+  try{
+    const suffix=lotId?`?parking_lot_id=${lotId}`:"";
+    ownerReservations=await api(`/api/owner/reservations${suffix}`);
+    const lot=ownerLots.find(item=>item.id===lotId);
+    $("ownerSelectedLot").textContent=lot?`${lotDisplayName(lot)} · ${lotDisplayAddress(lot)}`:"All Owned Parking Lots";
+    updateOwnerSummary();
+    renderOwnerReservations();
+  }catch(error){
+    $("ownerReservationRows").innerHTML=`<tr><td colspan="9" class="error">${esc(error.message)}</td></tr>`;
+  }
+}
+
+function updateOwnerSummary(){
+  $("ownerTotal").textContent=ownerReservations.length;
+  $("ownerReserved").textContent=ownerReservations.filter(item=>operationalStatus(item.reservation_status)==="reserved").length;
+  $("ownerParking").textContent=ownerReservations.filter(item=>operationalStatus(item.reservation_status)==="parking").length;
+  $("ownerCompleted").textContent=ownerReservations.filter(item=>operationalStatus(item.reservation_status)==="completed").length;
+  $("ownerUnpaid").textContent=ownerReservations.filter(item=>item.payment_status!=="paid").length;
+}
+
+function renderOwnerReservations(){
+  const keyword=$("ownerKeyword").value.trim().toLowerCase();
+  const statusFilter=$("ownerStatusFilter").value;
+  const paymentFilter=$("ownerPaymentFilter").value;
+
+  const rows=ownerReservations.filter(item=>{
+    const haystack=[item.owner_user_alias,`#${item.id}`].join(" ").toLowerCase();
+    return (!keyword||haystack.includes(keyword))
+      &&(!statusFilter||operationalStatus(item.reservation_status)===statusFilter)
+      &&(!paymentFilter||item.payment_status===paymentFilter);
+  });
+
+  $("ownerEmpty").hidden=rows.length!==0;
+  $("ownerReservationRows").innerHTML=rows.map(item=>`
+    <tr>
+      <td><b>#${item.id}</b><br><span class="muted">${formatDate(item.created_at)}</span></td>
+      <td><b>${esc(item.owner_user_alias)}</b><br><span class="muted">Reservation-specific temporary pseudonym</span></td>
+      <td class="time-cell">${formatFullDate(item.start_time)}</td>
+      <td>${statusBadge(item.reservation_status)}</td>
+      <td class="time-cell">
+        Check-in: ${formatFullDate(item.check_in_at)}<br>
+        ${item.driver_check_in_signed?'<span class="badge paid">Driver Check-in Verified</span>':'<span class="badge unpaid">Driver Check-in Pending</span>'}
+        ${item.owner_check_in_signed?'<br><span class="badge paid">Owner Check-in Signature</span>':''}<br>
+        Check-out: ${formatFullDate(item.check_out_at)}<br>
+        ${item.driver_check_out_signed?'<span class="badge paid">Driver Check-out Verified</span>':'<span class="badge unpaid">Driver Check-out Pending</span>'}
+        ${item.owner_check_out_signed?'<br><span class="badge paid">Owner Check-out Signature</span>':''}
+      </td>
+      <td>${paymentBadge(item.payment_status)}${item.check_out_at&&item.payment_status!=="paid"?'<br><span class="error">Unpaid after check-out</span>':""}<br><span class="muted">Pay: ${formatFullDate(item.paid_at)}</span></td>
+      <td class="amount">${Number(item.payment_amount).toLocaleString()} KRW</td>
+      <td>${ownerManagementButtons(item)}</td>
+    </tr>
+  `).join("");
+}
+
+async function refreshOwnerDashboard(){
+  const previousLotId=selectedOwnerLotId;
+  ownerLots=await api("/api/owner/parking-lots");
+
+  if(!ownerLots.length){
+    selectedOwnerLotId=null;
+    ownerReservations=[];
+    $("ownerNoLots").hidden=false;
+    renderOwnerParkingLots();
+    updateOwnerSummary();
+    renderOwnerReservations();
+    return;
+  }
+
+  $("ownerNoLots").hidden=true;
+  selectedOwnerLotId=ownerLots.some(lot=>lot.id===previousLotId)?previousLotId:ownerLots[0].id;
+  renderOwnerParkingLots();
+  await loadOwnerReservations(selectedOwnerLotId);
+}
+
+function startOwnerAutoRefresh(){
+  stopOwnerAutoRefresh();
+  ownerRefreshTimer=setInterval(()=>{
+    if(currentUser?.role==="owner")refreshOwnerDashboard();
+  },10000);
+}
+
+function stopOwnerAutoRefresh(){
+  if(ownerRefreshTimer){
+    clearInterval(ownerRefreshTimer);
+    ownerRefreshTimer=null;
+  }
+}
+
+function openVehicleManager(){
+  $("vehicleForm").hidden=false;
+  $("vehiclePlate").focus();
+  loadVehicles();
+}
+
+async function registerVehicle(){
+  const plate=$("vehiclePlate").value.trim();
+  if(!plate){
+    $("vehicleStatus").innerHTML='<span class="error">Enter a vehicle plate number.</span>';
+    return;
+  }
+  try{
+    await api("/api/vehicles",{
+      method:"POST",
+      body:JSON.stringify({
+        plate_number:plate
+      })
+    });
+    $("vehiclePlate").value="";
+    $("vehicleStatus").innerHTML='<span class="success">The vehicle has been registered.</span>';
+    await loadVehicles();
+  }catch(error){
+    $("vehicleStatus").innerHTML=`<span class="error">${esc(error.message)}</span>`;
+  }
+}
+
+async function deleteVehicle(id){
+  if(!confirm("Delete this vehicle?"))return;
+  try{
+    await api(`/api/vehicles/${id}`,{method:"DELETE"});
+    await loadVehicles();
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function loadVehicles(){
+  vehicles=await api("/api/vehicles");
+  $("reservationVehicle").innerHTML=vehicles.length
+    ?vehicles.map(v=>`<option value="${v.id}">${esc(v.plate_number)}</option>`).join("")
+    :'<option value="">No registered vehicles</option>';
+
+  $("vehicleResults").innerHTML=vehicles.length
+    ?vehicles.map(v=>`<div class="item-card"><b>${esc(v.plate_number)}</b><div style="margin-top:8px"><button class="danger" onclick="deleteVehicle(${v.id})">Delete</button></div></div>`).join("")
+    :'<div class="empty">No vehicles have been registered.</div>';
+}
+
+async function loadKakao(){
+  if(window.kakao?.maps?.services)return;
+  if(kakaoPromise)return kakaoPromise;
+
+  if(!kakaoKey){
+    const config=await api("/api/config");
+    kakaoKey=config.kakao_javascript_key||browserConfiguredKakaoKey()||"";
+  }
+
+  if(!kakaoKey||kakaoKey.includes("ENTER_")){
+    throw new Error("Enter KAKAO_JAVASCRIPT_KEY in the .env file.");
+  }
+
+  kakaoPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    script.src=`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(kakaoKey)}&libraries=services&autoload=false`;
+    script.onload=()=>kakao.maps.load(resolve);
+    script.onerror=()=>reject(new Error("Failed to load the Kakao Maps SDK."));
+    document.head.appendChild(script);
+  });
+  return kakaoPromise;
+}
+
+function findPlace(query){
+  return new Promise((resolve,reject)=>{
+    new kakao.maps.services.Places().keywordSearch(query,(data,status)=>{
+      if(status===kakao.maps.services.Status.OK&&data.length){
+        resolve(data[0]);
+      }else{
+        reject(new Error(`"${query}" place could not be found.`));
+      }
+    });
+  });
+}
+
+async function searchDestination(){
+  const query=$("locationQuery").value.trim();
+  if(!query){
+    $("searchStatus").innerHTML='<span class="error">Enter a destination.</span>';
+    return;
+  }
+
+  $("searchButton").disabled=true;
+  $("searchStatus").textContent="Searching...";
+
+  try{
+    await loadKakao();
+    selectedPlace=await findPlace(query);
+    const lat=Number(selectedPlace.y);
+    const lng=Number(selectedPlace.x);
+
+    $("mapArea").hidden=false;
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+    const center=new kakao.maps.LatLng(lat,lng);
+
+    if(!map){
+      map=new kakao.maps.Map($("map"),{center,level:4});
+    }else{
+      map.relayout();
+      map.setCenter(center);
+      map.setLevel(4);
+    }
+
+    if(destinationMarker)destinationMarker.setMap(null);
+    destinationMarker=new kakao.maps.Marker({map,position:center});
+
+    $("selectedPlace").innerHTML=`<div><b>${esc(placeDisplayName(selectedPlace))}</b><br><span class="muted">${esc(placeDisplayAddress(selectedPlace))}</span></div><span class="badge">Search Reference Location</span>`;
+
+    const lots=await api("/api/parking-lots/search",{
+      method:"POST",
+      body:JSON.stringify({
+        lat,
+        lng,
+        start_time:parseKstInput($("start").value),
+        radius_km:Number($("radius").value)
+      })
+    });
+
+    parkingMarkers.forEach(marker=>marker.setMap(null));
+    parkingMarkers=[];
+
+    lots.forEach(lot=>{
+      const marker=new kakao.maps.Marker({
+        map,
+        position:new kakao.maps.LatLng(lot.lat,lot.lng)
+      });
+
+      const info=new kakao.maps.InfoWindow({
+        content:`<div style="padding:10px;min-width:190px;color:#1b1b1d;background:#fff;"><b style="color:#1b1b1d;">${esc(lotDisplayName(lot))}</b><br><span style="color:#1b1b1d;">${esc(lotDisplayAddress(lot))}</span><br><span style="color:#1b1b1d;">Pay on Exit</span></div>`
+      });
+
+      kakao.maps.event.addListener(marker,"click",()=>info.open(map,marker));
+      parkingMarkers.push(marker);
+    });
+
+    renderLots(lots);
+    $("searchStatus").innerHTML=`<span class="success">${esc(placeDisplayName(selectedPlace))} based on ${lots.length} results found</span>`;
+  }catch(error){
+    $("searchStatus").innerHTML=`<span class="error">${esc(error.message)}</span>`;
+  }finally{
+    $("searchButton").disabled=false;
+  }
+}
+
+function renderLots(lots){
+  $("parkingResults").className=lots.length?"result-grid":"empty";
+  $("parkingResults").innerHTML=lots.length
+    ?lots.map(lot=>`<article class="result-card"><h3>${esc(lotDisplayName(lot))}</h3><div class="address">${esc(lotDisplayAddress(lot))}</div><div><span class="badge">${lot.distance_km}km</span><span class="badge">Pay on Exit</span></div><div class="actions"><button class="light" onclick="focusLot(${lot.lat},${lot.lng})">View on Map</button><button style="color:#ffffff !important;" onclick="reserve(${lot.id})">Reserve</button></div></article>`).join("")
+    :"No reservable parking lots were found within the search radius.";
+}
+
+function focusLot(lat,lng){
+  if(!map)return;
+  map.panTo(new kakao.maps.LatLng(lat,lng));
+  map.setLevel(3);
+  $("mapArea").scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+
+async function reserve(parkingLotId){
+  const vehicleId=Number($("reservationVehicle").value);
+  if(!vehicleId){
+    openVehicleManager();
+    alert("Register a vehicle first.");
+    return;
+  }
+
+  try{
+    const driverKeyBundle=await generateEd25519KeyBundle();
+    const created=await api("/api/reservations",{
+      method:"POST",
+      body:JSON.stringify({
+        parking_lot_id:parkingLotId,
+        vehicle_id:vehicleId,
+        start_time:parseKstInput($("start").value),
+        algorithm:driverKeyBundle.algorithm,
+        driver_temp_public_key:driverKeyBundle.publicKeyBase64
+      })
+    });
+    storePrivateKeyBundle("driver",created.id,driverKeyBundle);
+    alert("Reservation completed. The driver's temporary private key is stored only in this browser, and only the public key is stored in the DB.");
+    await loadReservations();
+    if(selectedPlace)await searchDestination();
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+let pendingPaymentReservationId=null;
+
+function openPaymentModal(id){
+  pendingPaymentReservationId=id;
+  $("paymentModal").hidden=false;
+}
+
+function closePaymentModal(){
+  pendingPaymentReservationId=null;
+  $("paymentModal").hidden=true;
+}
+
+async function confirmPayment(provider){
+  if(!pendingPaymentReservationId){
+    return;
+  }
+
+  try{
+    await api(`/api/reservations/${pendingPaymentReservationId}/pay`,{
+      method:"POST",
+      body:JSON.stringify({provider})
+    });
+    closePaymentModal();
+    await loadReservations();
+    alert("Payment completed.");
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function payReservation(id){
+  openPaymentModal(id);
+}
+
+
+function userSignatureSummary(r){
+  const inText=`Check-in: Driver ${r.driver_check_in_signed?"Completed":"Pending"} / Owner ${r.owner_check_in_signed?"Completed":"Pending"}`;
+  const outText=`Check-out: Driver ${r.driver_check_out_signed?"Completed":"Pending"} / Owner ${r.owner_check_out_signed?"Completed":"Pending"}`;
+  return `${inText}<br>${outText}`;
+}
+
+async function loadReservations(){
+  reservations=await api("/api/reservations");
+  $("reservationResults").innerHTML=reservations.length
+    ?reservations.map(r=>{
+      const actionButtons=[];
+      const amountText=r.reservation_status==="cancelled"
+        ?"0 KRW"
+        :r.final_fee!==null&&r.final_fee!==undefined
+          ?`${Number(r.payment_amount).toLocaleString()} KRW`
+          :"Pay on Exit";
+
+      if(r.reservation_status==="completed"&&r.payment_status!=="paid"&&r.owner_check_out_signed){
+        actionButtons.push(`<button class="pay" onclick="payReservation(${r.id})">Pay</button>`);
+      }
+      if(r.reservation_status==="cancelled"){
+        actionButtons.push(`<button class="danger" onclick="deleteCancelledReservation(${r.id})">Delete</button>`);
+      }
+      if(["pending","paid"].includes(r.reservation_status)&&!r.driver_check_in_signed){
+        actionButtons.push(`<button class="danger" onclick="changeReservation(${r.id},'cancel')">Cancel Reservation</button>`);
+        actionButtons.push(`<button onclick="changeReservation(${r.id},'check-in')">Driver Check-in Signature</button>`);
+      }
+      if(r.reservation_status==="checked_in"&&!r.driver_check_out_signed){
+        actionButtons.push(`<button onclick="changeReservation(${r.id},'check-out')">Driver Check-out Signature</button>`);
+      }
+
+      return `<div class="item-card">
+        <b>${esc(forceEnglishText(r.parking_lot_name))}</b>
+        ${esc(r.vehicle_plate)} · ${amountText}<br>
+        ${statusBadge(r.reservation_status)}
+        ${paymentBadge(r.payment_status)}
+        <div class="muted">Reservation Check-in: ${formatFullDate(r.start_time)}</div>
+        <div class="muted">Actual Check-in (KST): ${formatFullDate(r.check_in_at)} / Actual Check-out (KST): ${formatFullDate(r.check_out_at)}</div>
+        <div class="muted">Signature Status:<br>${userSignatureSummary(r)}</div>
+        <div class="item-actions">${actionButtons.join("")||"-"}</div>
+      </div>`;
+    }).join("")
+    :'<div class="empty">No reservations found.</div>';
+}
+
+async function deleteCancelledReservation(id){
+  if(!confirm("Delete this cancelled reservation record? This action cannot be undone.")){
+    return;
+  }
+
+  try{
+    await api(`/api/reservations/${id}`,{method:"DELETE"});
+    await loadReservations();
+
+    if(selectedPlace){
+      await searchDestination();
+    }
+
+    alert("The cancelled reservation record has been deleted.");
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+function utf8Bytes(text){
+  if(typeof TextEncoder!=="undefined"){
+    return Array.from(new TextEncoder().encode(text));
+  }
+  return Array.from(unescape(encodeURIComponent(text)), ch=>ch.charCodeAt(0));
+}
+
+function bytesToHex(bytes){
+  return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function sha256Bytes(inputBytes){
+  const bytes=Array.from(inputBytes);
+  const K=[
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ];
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+
+  const bitLen=bytes.length*8;
+  bytes.push(0x80);
+  while(bytes.length%64!==56)bytes.push(0);
+  const hi=Math.floor(bitLen/0x100000000);
+  const lo=bitLen>>>0;
+  bytes.push((hi>>>24)&255,(hi>>>16)&255,(hi>>>8)&255,hi&255,(lo>>>24)&255,(lo>>>16)&255,(lo>>>8)&255,lo&255);
+
+  const rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let offset=0;offset<bytes.length;offset+=64){
+    const w=new Array(64);
+    for(let i=0;i<16;i++){
+      const j=offset+i*4;
+      w[i]=((bytes[j]<<24)|(bytes[j+1]<<16)|(bytes[j+2]<<8)|bytes[j+3])>>>0;
+    }
+    for(let i=16;i<64;i++){
+      const s0=(rotr(w[i-15],7)^rotr(w[i-15],18)^(w[i-15]>>>3))>>>0;
+      const s1=(rotr(w[i-2],17)^rotr(w[i-2],19)^(w[i-2]>>>10))>>>0;
+      w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
+    }
+
+    let [a,b,c,d,e,f,g,h]=H;
+    for(let i=0;i<64;i++){
+      const S1=(rotr(e,6)^rotr(e,11)^rotr(e,25))>>>0;
+      const ch=((e&f)^((~e)&g))>>>0;
+      const temp1=(h+S1+ch+K[i]+w[i])>>>0;
+      const S0=(rotr(a,2)^rotr(a,13)^rotr(a,22))>>>0;
+      const maj=((a&b)^(a&c)^(b&c))>>>0;
+      const temp2=(S0+maj)>>>0;
+      h=g; g=f; f=e; e=(d+temp1)>>>0; d=c; c=b; b=a; a=(temp1+temp2)>>>0;
+    }
+    H=[
+      (H[0]+a)>>>0,(H[1]+b)>>>0,(H[2]+c)>>>0,(H[3]+d)>>>0,
+      (H[4]+e)>>>0,(H[5]+f)>>>0,(H[6]+g)>>>0,(H[7]+h)>>>0
+    ];
+  }
+
+  const out=[];
+  H.forEach(v=>out.push((v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255));
+  return out;
+}
+
+
+const SIGNATURE_ALGORITHM="Ed25519";
+
+function arrayBufferToBase64(buffer){
+  const bytes=new Uint8Array(buffer);
+  let binary="";
+  bytes.forEach(b=>binary+=String.fromCharCode(b));
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64){
+  const binary=atob(base64);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function pemFromSpkiBase64(base64){
+  const lines=base64.match(/.{1,64}/g)||[base64];
+  return `-----BEGIN PUBLIC KEY-----\n${lines.join("\n")}\n-----END PUBLIC KEY-----`;
+}
+
+async function sha256HexText(text){
+  const encoder=new TextEncoder();
+  const buffer=await crypto.subtle.digest("SHA-256",encoder.encode(text));
+  return [...new Uint8Array(buffer)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function legacyDerInteger(bytes){
+  return Array.from(bytes);
+}
+
+
+function rawSignatureToBase64(rawBuffer){
+  return arrayBufferToBase64(rawBuffer);
+}
+
+
+function signatureStorageKey(role,reservationId){
+  return `parkingEd25519.${role}.${reservationId}`;
+}
+
+async function generateEd25519KeyBundle(){
+  if(!window.crypto?.subtle){
+    throw new Error("Ed25519 signatures require WebCrypto in an HTTPS environment. Open the Dothome HTTPS address.");
+  }
+
+  let keyPair;
+  try{
+    keyPair=await crypto.subtle.generateKey(
+      {name:"Ed25519"},
+      true,
+      ["sign","verify"]
+    );
+  }catch(error){
+    throw new Error("This browser does not support WebCrypto Ed25519. Use the latest Chrome or Edge in an HTTPS environment.");
+  }
+
+  const publicRaw=await crypto.subtle.exportKey("raw",keyPair.publicKey);
+  const privatePkcs8=await crypto.subtle.exportKey("pkcs8",keyPair.privateKey);
+
+  return {
+    algorithm:SIGNATURE_ALGORITHM,
+    publicKeyBase64:arrayBufferToBase64(publicRaw),
+    privateKeyPkcs8Base64:arrayBufferToBase64(privatePkcs8)
+  };
+}
+
+
+function storePrivateKeyBundle(role,reservationId,bundle){
+  localStorage.setItem(signatureStorageKey(role,reservationId),JSON.stringify({
+    algorithm:bundle.algorithm,
+    publicKeyBase64:bundle.publicKeyBase64,
+    privateKeyPkcs8Base64:bundle.privateKeyPkcs8Base64,
+    createdAt:new Date().toISOString()
+  }));
+}
+
+
+function getPrivateKeyBundle(role,reservationId){
+  try{
+    const raw=localStorage.getItem(signatureStorageKey(role,reservationId));
+    return raw?JSON.parse(raw):null;
+  }catch{return null;}
+}
+
+async function signWithPrivateBundle(role,reservationId,message){
+  const bundle=getPrivateKeyBundle(role,reservationId);
+  if(!bundle?.privateKeyPkcs8Base64){
+    throw new Error(`${role==="driver"?"Driver":"Owner"} temporary private key could not be found in this browser. Because private keys are not stored in the DB, continue in the same browser where the reservation was created or signed.`);
+  }
+
+  const privateKey=await crypto.subtle.importKey(
+    "pkcs8",
+    base64ToArrayBuffer(bundle.privateKeyPkcs8Base64),
+    {name:"Ed25519"},
+    false,
+    ["sign"]
+  );
+
+  const raw=await crypto.subtle.sign(
+    {name:"Ed25519"},
+    privateKey,
+    new TextEncoder().encode(message)
+  );
+
+  return {
+    signatureValue:arrayBufferToBase64(raw),
+    publicKeyBase64:bundle.publicKeyBase64,
+    algorithm:bundle.algorithm||SIGNATURE_ALGORITHM
+  };
+}
+
+
+function buildSignatureMessage(reservationId,signerRole,action,signedAt){
+  return `${reservationId}|${signerRole}|${action}|${signedAt}`;
+}
+
+let pendingSignatureReservationId=null;
+let pendingSignatureAction=null;
+let pendingSignerRole="driver";
+let signatureIsDrawing=false;
+let signatureHasInk=false;
+
+function openSignatureModal(id,action){
+  const reservation=reservations.find(item=>item.id===id);
+  if(!reservation){
+    alert("Reservation information could not be found. Refresh your reservation list and try again.");
+    return;
+  }
+  const stored=getPrivateKeyBundle("driver",id);
+  if(!stored||stored.publicKeyBase64!==reservation.driver_public_key){
+    alert("This browser does not have the driver's temporary private key for this reservation. Because private keys are not stored in the DB, the signature must be created in the same browser where the reservation was made.");
+    return;
+  }
+  pendingSignerRole="driver";
+  pendingSignatureReservationId=id;
+  pendingSignatureAction=action;
+  const isCheckIn=action==="check-in";
+  $("signatureTitle").textContent=isCheckIn?"Driver Check-in Time Signature":"Driver Check-out Time Signature";
+  $("signatureDescription").textContent=isCheckIn
+    ?"The driver signs the check-in time with a reservation-specific temporary private key. The owner confirmation signature is processed automatically at the same time."
+    :"The driver signs the check-out time with the same reservation-specific temporary private key. The owner confirmation signature is processed automatically at the same time.";
+  $("signatureTime").textContent=`Signature Reference Time (KST): ${formatFullDate(new Date())}`;
+  $("signatureModal").hidden=false;
+  requestAnimationFrame(initSignatureCanvas);
+}
+
+async function openOwnerSignatureModal(id,action){
+  const reservation=ownerReservations.find(item=>item.id===id);
+  if(!reservation){
+    alert("Reservation information could not be found. Refresh the owner reservation list and try again.");
+    return;
+  }
+  let stored=getPrivateKeyBundle("owner",id);
+  if(!stored){
+    const bundle=await generateEd25519KeyBundle();
+    storePrivateKeyBundle("owner",id,bundle);
+    stored=getPrivateKeyBundle("owner",id);
+  }
+  if(reservation.owner_public_key&&stored.publicKeyBase64!==reservation.owner_public_key){
+    alert("This browser's owner temporary private key does not match the owner public key in the DB. Continue in the same browser where the check-in confirmation was performed.");
+    return;
+  }
+  pendingSignerRole="owner";
+  pendingSignatureReservationId=id;
+  pendingSignatureAction=action;
+  const isCheckIn=action==="check-in";
+  $("signatureTitle").textContent=isCheckIn?"Owner Check-in Confirmation Signature":"Owner Check-out Confirmation Signature";
+  $("signatureDescription").textContent=isCheckIn
+    ?"After verifying the driver's check-in signature, the owner leaves a check-in confirmation signature with a reservation-specific temporary private key."
+    :"After verifying the driver's check-out signature, the owner leaves a check-out confirmation signature with a reservation-specific temporary private key.";
+  $("signatureTime").textContent=`Signature Reference Time (KST): ${formatFullDate(new Date())}`;
+  $("signatureModal").hidden=false;
+  requestAnimationFrame(initSignatureCanvas);
+}
+
+function closeSignatureModal(){
+  pendingSignatureReservationId=null;
+  pendingSignatureAction=null;
+  signatureIsDrawing=false;
+  $("signatureModal").hidden=true;
+}
+
+function initSignatureCanvas(){
+  const canvas=$("signatureCanvas");
+  const rect=canvas.getBoundingClientRect();
+  const ratio=window.devicePixelRatio||1;
+  canvas.width=Math.max(1,Math.floor(rect.width*ratio));
+  canvas.height=Math.max(1,Math.floor(rect.height*ratio));
+
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(ratio,0,0,ratio,0,0);
+  ctx.fillStyle="#ffffff";
+  ctx.fillRect(0,0,rect.width,rect.height);
+  ctx.strokeStyle="#1b1b1d";
+  ctx.lineWidth=3;
+  ctx.lineCap="round";
+  ctx.lineJoin="round";
+
+  signatureHasInk=false;
+  canvas.style.touchAction="none";
+
+  canvas.onpointerdown=event=>{
+    signatureIsDrawing=true;
+    signatureHasInk=true;
+    canvas.setPointerCapture(event.pointerId);
+    const point=signaturePointer(event,canvas);
+    ctx.beginPath();
+    ctx.moveTo(point.x,point.y);
+  };
+
+  canvas.onpointermove=event=>{
+    if(!signatureIsDrawing)return;
+    const point=signaturePointer(event,canvas);
+    ctx.lineTo(point.x,point.y);
+    ctx.stroke();
+  };
+
+  canvas.onpointerup=event=>{
+    signatureIsDrawing=false;
+    try{canvas.releasePointerCapture(event.pointerId)}catch{}
+  };
+
+  canvas.onpointerleave=()=>{
+    signatureIsDrawing=false;
+  };
+}
+
+function signaturePointer(event,canvas){
+  const rect=canvas.getBoundingClientRect();
+  return {
+    x:event.clientX-rect.left,
+    y:event.clientY-rect.top
+  };
+}
+
+function clearSignature(){
+  initSignatureCanvas();
+}
+
+
+async function submitSignature(){
+  if(!pendingSignatureReservationId||!pendingSignatureAction){
+    return;
+  }
+  if(!signatureHasInk){
+    alert("Please sign in the signature area.");
+    return;
+  }
+
+  const signatureDataUrl=$("signatureCanvas").toDataURL("image/png");
+  const signedAt=new Date().toISOString();
+  const stored=getPrivateKeyBundle(pendingSignerRole,pendingSignatureReservationId);
+  const signedMessage=buildSignatureMessage(
+    pendingSignatureReservationId,
+    pendingSignerRole,
+    pendingSignatureAction,
+    signedAt
+  );
+  const signed=await signWithPrivateBundle(pendingSignerRole,pendingSignatureReservationId,signedMessage);
+
+  try{
+    const payload={
+      signature_data_url:signatureDataUrl,
+      signed_message:signedMessage,
+      signature_value:signed.signatureValue,
+      signed_at:signedAt,
+      algorithm:signed.algorithm
+    };
+    let url=`/api/reservations/${pendingSignatureReservationId}/${pendingSignatureAction}`;
+    if(pendingSignerRole==="owner"){
+      payload.owner_temp_public_key=signed.publicKeyBase64;
+      url=`/api/owner/reservations/${pendingSignatureReservationId}/${pendingSignatureAction}/sign`;
+    }
+    await api(url,{method:"POST",body:JSON.stringify(payload)});
+
+    const actionLabel=pendingSignatureAction==="check-in"?"Check-in":"Check-out";
+    const roleLabel=pendingSignerRole==="driver"?"Driver":"Owner";
+    closeSignatureModal();
+
+    if(currentUser?.role==="owner"){
+      await refreshOwnerDashboard();
+    }else{
+      await loadReservations();
+      if(selectedPlace)await searchDestination();
+    }
+    alert(`${actionLabel} signature completed. The owner confirmation signature was also processed automatically.`);
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function changeReservation(id,action){
+  if(action==="cancel"&&!confirm("Cancel this reservation before check-in?")){
+    return;
+  }
+
+  if(action==="check-in"||action==="check-out"){
+    openSignatureModal(id,action);
+    return;
+  }
+
+  try{
+    await api(`/api/reservations/${id}/${action}`,{method:"POST"});
+    await loadReservations();
+
+    if(selectedPlace){
+      await searchDestination();
+    }
+
+    if(action==="cancel"){
+      alert("The reservation has been cancelled.");
+    }
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function restoreSession(){
+  if(!token)return;
+  try{
+    await enterRoleScreen();
+  }catch{
+    token="";
+    sessionStorage.removeItem("parkingToken");
+  }
+}
+
+setDefaultTimes();
+restoreSession();
+</script>
+
+<div id="paymentModal" class="modal-backdrop" hidden>
+  <div class="payment-modal">
+    <h2>Select Payment Method</h2>
+    <p class="muted">Select the simple payment method to use.</p>
+
+<div class="payment-options">
+  <button class="payment-option-button" onclick="confirmPayment('kakao_pay')">
+    <img src="/image/kakao.png" alt="KakaoPay">
+  </button>
+
+  <button class="payment-option-button" onclick="confirmPayment('naver_pay')">
+    <img src="/image/naver.jpg" alt="Naver Pay">
+  </button>
+
+  <button class="payment-option-button" onclick="confirmPayment('toss')">
+    <img src="/image/toss.png" alt="Toss">
+  </button>
+</div>
+
+    <button class="light" onclick="closePaymentModal()">Cancel</button>
+  </div>
+</div>
+
+
+<div id="signatureModal" class="modal-backdrop" hidden>
+  <div class="signature-modal">
+    <h2 id="signatureTitle">Check-in Time Confirmation Signature</h2>
+    <p id="signatureDescription" class="muted">Check the current time and sign in the signature area.</p>
+    <div id="signatureTime" class="signature-time">Signature Reference Time (KST): -</div>
+
+    <div class="signature-pad-wrap">
+      <canvas id="signatureCanvas"></canvas>
+    </div>
+
+    <p class="signature-help">Use a mouse or touch input to sign in the signature area.</p>
+
+    <div class="signature-actions">
+      <button class="light" onclick="clearSignature()">Clear</button>
+      <button class="light" onclick="closeSignatureModal()">Cancel</button>
+      <button onclick="submitSignature()" style="color:#ffffff !important;">Sign and Submit</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="adminDetailModal" class="modal-backdrop" hidden>
+  <div class="admin-detail-modal">
+    <div class="modal-title-row">
+      <h2>Signature Details</h2>
+      <button class="light small-action" onclick="closeAdminReservationDetail()">Close</button>
+    </div>
+
+    <div id="adminDetailContent"></div>
+  </div>
+</div>
+
+</body>
+</html>
