@@ -1,0 +1,42 @@
+{
+  "experiment": "Experiment 2 - parking-duration scalability",
+  "measurement_design": {
+    "hours": [
+      1,
+      4,
+      12,
+      24,
+      48,
+      72,
+      100
+    ],
+    "sessions_per_condition": 1000,
+    "warmup": 30,
+    "measurement_blocks_per_system_hour": 1,
+    "final_value": "total execution time of 1,000 sessions / 1,000",
+    "trial_or_batch_averaging": "not used"
+  },
+  "primary_interpretation": {
+    "Proposed": "entry+exit only; 4 Ed25519 signatures, 8 Ed25519 verifications, 2 AES-GCM encryptions, 2 AES-GCM decryptions per session; no duration-dependent cryptographic operation",
+    "PISA": "arrival AES challenge-response + one endpoint signature verification; hour m hashes received token m times; no new hourly signature generation"
+  },
+  "diagnostics": {
+    "Proposed_measured_span_percent_of_mean": 1.9700940578901793,
+    "PISA_1h_ms": 0.0711731,
+    "PISA_100h_ms": 1.9211859999999998,
+    "PISA_100h_over_1h": 26.99314769203533
+  },
+  "hard_checks": {
+    "exactly_1000_sessions_per_condition": true,
+    "single_measurement_block_no_trial_averaging": true,
+    "warmup_30": true,
+    "hours_are_1_4_12_24_48_72_100": true,
+    "proposed_duration_dependent_crypto_ops_are_zero": true,
+    "pisa_hash_count_matches_h_h_plus_1_over_2": true,
+    "pisa_hash_count_strictly_increases": true,
+    "no_new_hourly_signature_generation_in_primary": true,
+    "pre_entry_work_excluded_from_timer": true,
+    "network_tls_db_ui_payment_excluded": true,
+    "figures_use_actual_numeric_hour_spacing": true
+  }
+}

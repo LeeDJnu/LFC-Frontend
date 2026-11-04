@@ -1,0 +1,90 @@
+Experiment: Experiment 2 - post-entry scalability with parking duration
+Python: 3.13.2 (tags/v3.13.2:4f8bb39, Feb  4 2025, 15:23:48) [MSC v.1942 64 bit (AMD64)]
+Platform: Windows-11-10.0.26200-SP0
+Processor: Intel64 Family 6 Model 183 Stepping 1, GenuineIntel
+cryptography: 46.0.4
+matplotlib: 3.10.8
+Parking durations (hours): 1, 4, 12, 24, 48, 72, 100
+Measured sessions per condition: 1000
+Warm-up sessions per condition: 30
+Measurement blocks per system/hour: 1
+Final statistic: total measured time / 1,000 sessions
+Batch/trial averaging: not used
+Primary PISA hash: SHA-256
+PISA endpoint verification: once at arrival; hourly phase measures hash-chain relation only
+Network/TLS/DB/UI/payment latency: excluded
+Pre-entry key generation/hash-chain construction: excluded from timer
+
+
+
+용어 통일?
+
+1. 주차장/주차 공간
+
+
+============================================
+
+
+보안 모델 모순: C/H를 honest-but-curious(프로토콜은 올바르게 수행)로 정의해놓고, 위협 모델에선 이들이 시간을 조작한다고 가정함. 보안 모델을 재정의할 필요가 있어보임.
+
+==> Potential malicious로 재정의
+프로토콜의 과정은 모두 올바르게 수행함 (키 생성, 예약 및 등록). 그러나 서비스 이용 과정 중 얻는 정보를 통해 신원을 알아내려 할 수 있고, 자신의 이익을 위해 주차 시간을 조작할 수 있음
+
+분쟁 처리 공백: 서명은 사후 변조·부인만 막음. (i) 시계 오차 허용 범위와 H의 freshness 검증(받은 T_in이 현재 시각 근처인지), (ii) 한쪽이 서명·전달을 거부할 때 S의 정책(타임아웃, 예약금 처리)을 한 단락 추가하면 좋겠음. "H는 실제 입·출차를 확인한 뒤에만 서명한다"는 가정도 명시해야 정리 4가 명확함.
+
+==> 프로토콜 단계에 추가 서술
+
+PISA 비교 가정: h(h+1)/2는 매시간 앵커부터 재검증하는 모델을 전제한 수식임. 검증자가 직전 값을 캐시하면 선형이 되니, 어떤 검증 모델인지 근거 한 문장 필요함. 결론은 어차피 O(1) vs 증가라 유지되지만 방어는 해둬야 함. 해시체인 길이를 24로 잡고 실험은 100시간까지 돌린 것도 불일치로 보임. 길이를 늘리거나 재발급 가정을 명시 바람.(실험부분 다소 의아한점 많음...?)
+
+==> PISA 모델은 실제 기술된 내용을 기반으로 실험하였다고 명시 (매시간 검증하는 모델, 직전 값을 캐시하는 최적화 모델은 고려하지 않음)
+두 실험 모두 해시체인 길이를 100으로 수정 후 재실험하였음. 이에 따라 실험 1 PISA의 연산량이 조금 증가하였음 (2~30 마이크로초 차이)
+
+가볍게 한 문장씩: C–H 공모는 범위 밖이라고 선언해둘 것 / Cert_S에 nonce나 유효기간을 넣어 예약에 바인딩하면 더 견고함 / 프라이버시 정의가 "프로토콜 수준" 보호임을 한정할 것(번호판, 주차장 위치는 물리적으로 노출됨).
+
+==> Cert_S 첫 정의시 만료 시간 T_exp를 추가, 만료 시간이 지나면 인증서는 더 이상 유효하지 않음 명시
+==> 4.1.1장 범위 밖 + 프로토콜 수준 보호 한정 정의
+
+서론에 "총 6장 구성"인데 7장까지 있음.
+==> 총 7장으로 구성되며 ~  수정 완료
+
+V장 제목 '보안성 분석'도 5.2(효율성)와 안 맞으니 '분석 및 평가'로 바꾸면 좋겠음.
+==> 분석 및 평가로 수정 완료
+
+표 2·표 3 번호가 각각 두 번 쓰였고 Algorithm이 1→3으로 건너뜀. 전체 재번호 필요함.
+==> 전체 재번호 완료
+
+4.2.5~4.2.6의 M_in/Rec_in 수식이 뒤 문장과 겹쳐 보이고,
+(1:1)/(1:N)이 들어갈 자리가 빈 곳이 있음(1.2, II장 말미, IV장 서두). 최종 PDF 조판 꼭 확인 바람.
+
+표 1의 Message Indistinguishability 열에 O/X 대신 Symmetric/Asymmetric이 들어가 있어 열 의미가 섞임 (암호 방식 열을 분리하면 좋겠음.)
+
+==> 열 분리 완료
+
+II장 말미 문단이 IV장 서두에 거의 그대로 반복됨 (한쪽 삭제)
+==> 2장에서 삭제
+
+[12]를 V장에서 갑자기 PISA라고 부름 — 첫 언급 때 이름을 도입할 것.
+==> 처음 언급되는 2장에서 PISA를 제안하였다. 로 수정 완료
+
+국문 초록 마지막 문장("이를 안전성 분석과…")이 비문에 가까움. 영문도 security analysis로 efficiency를 평가하는 것처럼 읽히니 "security and efficiency are evaluated…"로 고치면 좋겠음.
+
+==> 수정 완료
+
+정리 4의 "RSU나 OBU 같은 내부 센서가 고장 나더라도"는 LFCSP에 해당 장치가 없어 어색함 — "주차 중 장치의 상시 동작에 의존하지 않으므로"로 수정 바람.
+==>  수정 완료
+
+용어 통일: (1:N) / Multi-Pool Support / 다중 차량 수용이 혼용됨 — 하나로 정하고 4장에서 정의할 것.
+==> 다중 차량 수용형 구조로 통일, 정의
+
+오탈자: 결론 "효율석 분석", "측정됐다"(어체 통일), [10]의 "andd",
+==> 수정 완료
+
+[11] 연도 본문 2025 vs 참고문헌 2024 불일치, [13]은 ResearchGate 링크라 정식 출처나 DOI로 교체 권장.
+
+==> [11] Published in 날짜로 가야할지 / Date of Publication 날짜로 가야할지?  ==> PDF에 작성된 것이 published in 날짜라서 통일
+[13] DOI 수정
+
+
+제목 수정 요청? (경량 공정 과금이 이상하다는 뉘앙스의 피드백)
+전자 계약에 전자 서명이 사용되는 추세가 아님. (부인방지를 위해 사용되는 추세가 아닌건가?) 
+전자 서명없으면 다 조작 가능하겠네? 뉘앙스의 피드백
