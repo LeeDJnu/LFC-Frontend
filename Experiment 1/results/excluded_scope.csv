@@ -1,0 +1,8 @@
+﻿item,reason
+R credential issuance,common precondition; registration phase excluded
+M token/payment operations,user requirement; monetary operations excluded
+network/TLS latency,experiment measures cryptographic computation only
+DB/UI/search/map/storage,non-cryptographic application overhead
+PISA arrival E_k(alpha) and E_k(alpha+1),post-entry; Experiment 2 only
+PISA hourly challenge-response,post-entry; Experiment 2 only
+Proposed entry/exit signatures and AES-GCM,post-entry; Experiment 2 only

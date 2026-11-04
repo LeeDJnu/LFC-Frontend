@@ -1,0 +1,63 @@
+============================================================
+Experiment 1 - Environment and Experimental Conditions
+============================================================
+
+[System / Software Environment]
+run_timestamp            : 2026-09-17 21:45:59 +0900
+operating_system         : Windows
+os_release               : 11
+os_version               : 10.0.26200
+architecture             : AMD64
+cpu                      : 13th Gen Intel(R) Core(TM) i5-13600K
+logical_cpu_count        : 20
+python_version           : 3.13.2
+python_full_version      : 3.13.2 (tags/v3.13.2:4f8bb39, Feb  4 2025, 15:23:48) [MSC v.1942 64 bit (AMD64)]
+python_executable        : C:\Users\d\Desktop\exp1_100\.venv\Scripts\python.exe
+cryptography_version     : 46.0.4
+openssl_version          : OpenSSL 3.0.15 3 Sep 2024
+matplotlib_version       : 3.10.8
+timer                    : time.perf_counter_ns()
+timer_resolution_seconds : 1e-07
+timer_monotonic          : True
+timer_adjustable         : False
+
+[Experimental Conditions]
+Experiment                       : Experiment 1 - Pre-entry cryptographic computation overhead
+Measurement start                : parking listing / reservation preparation
+Measurement stop                 : immediately before vehicle arrival
+Measured workflows               : 1000
+Warm-up repetitions              : 30
+Random seed                      : 20260810
+Primary PISA hash H              : SHA-256
+Hash sensitivity                 : optional; use --run-hash-sensitivity (SHA-512, BLAKE2s)
+PISA maximum hash-chain length t : 100
+PISA beta encryption profile     : X25519 + HKDF-SHA256 + AES-GCM-128
+PISA alpha/beta nonce profile    : 128-bit
+PISA k                           : 128-bit
+PISA r benchmark profile         : 256-bit
+Proposed temporary signature key : Ed25519
+Proposed secret k                : 128-bit random value
+Proposed N_S,C nonce             : 128-bit random value
+Final statistic                  : total measured time / 1,000 workflows
+Execution ordering               : Proposed/PISA order randomized once for each measured entity bundle
+Paper-facing error bars          : not shown
+Raw measured totals              : retained
+
+[Excluded from Experiment 1]
+- R credential issuance
+- M/payment/token operations
+- network latency and TLS handshake/transport time
+- DB/UI/search/map/storage overhead
+- PISA arrival E_k(alpha) / E_k(alpha+1)
+- PISA hourly challenge-response
+- Proposed entry/exit signatures and AES-GCM
+
+[Interpretation Note]
+PISA does not specify a complete public-key encryption construction for beta
+or a concrete hash function H. Therefore, the beta encryption and H choices
+above are declared reproducible benchmark implementation profiles, not
+algorithms mandated by the PISA paper.
+
+Main claim evaluated:
+The Proposed scheme has lower pre-entry cryptographic computation overhead
+than PISA under the declared implementation profile.

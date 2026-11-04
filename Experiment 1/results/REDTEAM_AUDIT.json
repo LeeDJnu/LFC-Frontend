@@ -1,0 +1,61 @@
+{
+  "environment": {
+    "run_timestamp": "2026-09-17 21:46:03 +0900",
+    "operating_system": "Windows",
+    "os_release": "11",
+    "os_version": "10.0.26200",
+    "architecture": "AMD64",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13600K",
+    "logical_cpu_count": 20,
+    "python_version": "3.13.2",
+    "python_full_version": "3.13.2 (tags/v3.13.2:4f8bb39, Feb  4 2025, 15:23:48) [MSC v.1942 64 bit (AMD64)]",
+    "python_executable": "C:\\Users\\d\\Desktop\\exp1_100\\.venv\\Scripts\\python.exe",
+    "cryptography_version": "46.0.4",
+    "openssl_version": "OpenSSL 3.0.15 3 Sep 2024",
+    "matplotlib_version": "3.10.8",
+    "timer": "time.perf_counter_ns()",
+    "timer_resolution_seconds": 1e-07,
+    "timer_monotonic": true,
+    "timer_adjustable": false
+  },
+  "experiment": "Experiment 1 - pre-entry cryptographic computation overhead",
+  "measurement_boundary": {
+    "start": "parking listing / reservation preparation",
+    "stop": "immediately before vehicle arrival"
+  },
+  "measurement_design": {
+    "workflows": 1000,
+    "warmup": 30,
+    "measurement_blocks_per_entity_and_system": 1,
+    "final_value": "total execution time of 1,000 workflows / 1,000",
+    "trial_or_batch_averaging": "not used"
+  },
+  "parameters": {
+    "pisa_t": 100,
+    "primary_hash": "SHA-256",
+    "hash_sensitivity": "not run in primary experiment",
+    "PISA_beta_PKE_profile": "X25519 + HKDF-SHA256 + AES-GCM-128",
+    "alpha_beta_nonce_profile": "128-bit",
+    "k": "128-bit",
+    "r_profile": "256-bit"
+  },
+  "hard_checks": {
+    "experiment_is_pre_entry_only": true,
+    "exactly_1000_workflows_measured": true,
+    "single_measurement_block_no_trial_averaging": true,
+    "R_registration_excluded": true,
+    "M_payment_excluded": true,
+    "post_entry_operations_excluded": true,
+    "PISA_beta_encryption_included": true,
+    "PISA_beta_decryption_included": true,
+    "PISA_r_generation_included": true,
+    "PISA_hash_chain_100_calls_included": true,
+    "PISA_H_credential_verification_included": true,
+    "PISA_C_ephemeral_signature_verification_included": true,
+    "Proposed_N_S_C_generation_included": true,
+    "Proposed_pre_entry_AES_not_added": true,
+    "primary_Total_Proposed_lower_than_PISA": true,
+    "hash_sensitivity_optional_or_passed": true,
+    "direct_total_consistent_with_entity_sum": true
+  }
+}

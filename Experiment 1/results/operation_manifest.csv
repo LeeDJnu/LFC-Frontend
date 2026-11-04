@@ -1,0 +1,19 @@
+﻿system,entity,operation,count,phase
+Proposed,C,Ed25519 temporary key generation,1,pre-entry
+Proposed,C,128-bit k generation,1,pre-entry
+Proposed,H,alpha generation,1,pre-entry
+Proposed,H,Ed25519 temporary key generation,1,pre-entry
+Proposed,S,"N_S,C generation",1,pre-entry
+Proposed,S,Ed25519 certificate signature,1,pre-entry
+PISA,H,alpha generation,1,Protocol step 2
+PISA,S,verify H R-issued UID credential,1,Protocol step 2
+PISA,C,X25519 ephemeral key generation,1,Protocol step 3
+PISA,C,Ed25519 sign ephemeral public key,1,Protocol step 3
+PISA,S,verify C ephemeral-public-key signature,1,Protocol step 3
+PISA,S,beta generation,1,Protocol step 3
+PISA,S,beta hybrid public-key encryption,1,Protocol step 3
+PISA,C,beta hybrid public-key decryption,1,Protocol step 3
+PISA,C,128-bit k generation,1,Protocol step 4
+PISA,S,256-bit r generation,1,Protocol step 5
+PISA,S,H evaluations (100 sequential calls),100,Protocol step 5
+PISA,S,Ed25519 sign H^100(r),1,Protocol step 5
